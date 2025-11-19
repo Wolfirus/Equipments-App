@@ -89,7 +89,6 @@ const Register = () => {
           >
             <option value="user">Utilisateur</option>
             <option value="supervisor">Superviseur</option>
-            <option value="admin">Administrateur</option>
           </select>
 
           <button type="submit" disabled={loading} className="auth-btn">
