@@ -664,6 +664,49 @@ a {
   transform: scale(1.03);
   opacity: 0.9;
 }
+/* === Buttons manquants === */
+
+/* Bouton gris clair (Modifier, Annuler) */
+.btn-secondary {
+  background: rgba(148, 163, 184, 0.25);
+  border: none;
+  padding: 6px 14px;
+  border-radius: 999px;
+  color: #f1f5f9;
+  font-size: 14px;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.btn-secondary:hover {
+  background: rgba(148, 163, 184, 0.35);
+  transform: scale(1.03);
+}
+
+/* Bouton violet (Enregistrer) */
+.btn-purple {
+  background: linear-gradient(135deg, #7b2ff7 0%, #a855f7 100%);
+  border: none;
+  padding: 6px 14px;
+  border-radius: 999px;
+  color: white;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.btn-purple:hover {
+  transform: scale(1.03);
+  box-shadow: 0 0 12px rgba(123, 47, 247, 0.6);
+}
+
+/* Taille réduite (btn-small) */
+.btn-small {
+  padding: 5px 10px;
+  font-size: 12px;
+}
+
 
 .input-inline {
   padding: 6px 10px;
