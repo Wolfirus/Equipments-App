@@ -593,9 +593,10 @@ a {
   to {
     opacity: 1;
     transform: translateY(0);
-<<<<<<< HEAD
   }
 }
+
+/* ==== Admin dashboard extra styles ==== */
 .dashboard-container {
   padding: 80px 40px;
   color: #ffffff;
@@ -637,7 +638,6 @@ a {
   font-size: 20px;
   opacity: 0.85;
 }
-/* ==== Admin Dashboard – gestion des utilisateurs ==== */
 
 .role-select {
   padding: 6px 10px;
@@ -649,11 +649,6 @@ a {
   outline: none;
 }
 
-.role-select:disabled {
-  opacity: 0.6;
-}
-
-/* bouton rouge suppression */
 .btn-danger {
   background: linear-gradient(135deg, #f97373, #ef4444);
   padding: 6px 12px;
@@ -670,15 +665,6 @@ a {
   opacity: 0.9;
 }
 
-.badge-disabled {
-  padding: 6px 12px;
-  border-radius: 999px;
-  font-size: 12px;
-  background: rgba(148, 163, 184, 0.3);
-  color: #e5e7eb;
-}
-/* ==== Admin Dashboard – Edition inline ==== */
-
 .input-inline {
   padding: 6px 10px;
   border-radius: 8px;
@@ -690,108 +676,7 @@ a {
   width: 100%;
 }
 
-/* boutons génériques */
-
-.btn-secondary {
-  background: rgba(148, 163, 184, 0.2);
-  padding: 6px 12px;
-  border-radius: 999px;
-  border: none;
-  color: #e5e7eb;
-  font-size: 13px;
-  cursor: pointer;
-  margin-right: 6px;
-  transition: transform 0.15s ease, opacity 0.15s ease;
-}
-
-.btn-secondary:hover {
-  transform: scale(1.03);
-  opacity: 0.9;
-}
-
-.btn-small {
-  font-size: 12px;
-  padding: 4px 10px;
-}
-
-/* .btn-purple existe déjà, on la réutilise pour "Enregistrer" */
-
-/* badge "Mon compte" existait déjà mais au cas où : */
-.badge-disabled {
-  padding: 6px 12px;
-  border-radius: 999px;
-  font-size: 12px;
-  background: rgba(148, 163, 184, 0.3);
-  color: #e5e7eb;
-  margin-left: 6px;
-}
-
-
-=======
-}
-}
-/* Pages container */
-.page-container {
-  display: flex;
-  justify-content: center;
-  padding: 40px 20px;
-}
-
-/* Glass effect cards */
-.glass-card {
-  width: 100%;
-  max-width: 700px;
-  background: rgba(255, 255, 255, 0.2);
-  backdrop-filter: blur(12px);
-  padding: 30px;
-  border-radius: 16px;
-  box-shadow: 0 8px 30px rgba(0,0,0,0.1);
-  color: #222;
-}
-
-/* Contact form */
-.contact-form input,
-.contact-form textarea {
-  width: 100%;
-  padding: 12px;
-  margin-bottom: 12px;
-  border-radius: 10px;
-  border: 1px solid #ccc;
-  outline: none;
-  font-size: 16px;
-}
-
-.btn-submit {
-  width: 100%;
-  padding: 12px;
-  background-color: #2a7ae4;
-  color: white;
-  border: none;
-  border-radius: 10px;
-  cursor: pointer;
-  font-size: 17px;
-  transition: 0.3s;
-}
-
-.btn-submit:hover {
-  background-color: #1e5eb8;
-}
-
-/* Paragraphs for about */
-.paragraph {
-  font-size: 17px;
-  line-height: 1.7;
-  margin-bottom: 15px;
-  color: #333;
-}
-
-/* Subtitle */
-.subtitle {
-  font-size: 18px;
-  color: #444;
-  margin-bottom: 20px;
-  text-align: center;
-}
+/* Messages */
 .messages-list {
   margin-top: 20px;
 }
@@ -815,6 +700,7 @@ a {
 .message-item small {
   color: #555;
 }
+
 .btn-delete {
   background: #e63946;
   color: white;
@@ -829,4 +715,3 @@ a {
 .btn-delete:hover {
   background: #b81d2b;
 }
->>>>>>> 5f585ef7165fe5dab97e42c663af6c88361e6525
