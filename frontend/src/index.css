@@ -22,7 +22,6 @@ a {
   min-height: 100vh;
 }
 
-/* NAVBAR */
 .glass-navbar {
   position: sticky;
   top: 0;
@@ -594,6 +593,7 @@ a {
   to {
     opacity: 1;
     transform: translateY(0);
+<<<<<<< HEAD
   }
 }
 .dashboard-container {
@@ -727,3 +727,106 @@ a {
 }
 
 
+=======
+}
+}
+/* Pages container */
+.page-container {
+  display: flex;
+  justify-content: center;
+  padding: 40px 20px;
+}
+
+/* Glass effect cards */
+.glass-card {
+  width: 100%;
+  max-width: 700px;
+  background: rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(12px);
+  padding: 30px;
+  border-radius: 16px;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.1);
+  color: #222;
+}
+
+/* Contact form */
+.contact-form input,
+.contact-form textarea {
+  width: 100%;
+  padding: 12px;
+  margin-bottom: 12px;
+  border-radius: 10px;
+  border: 1px solid #ccc;
+  outline: none;
+  font-size: 16px;
+}
+
+.btn-submit {
+  width: 100%;
+  padding: 12px;
+  background-color: #2a7ae4;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 17px;
+  transition: 0.3s;
+}
+
+.btn-submit:hover {
+  background-color: #1e5eb8;
+}
+
+/* Paragraphs for about */
+.paragraph {
+  font-size: 17px;
+  line-height: 1.7;
+  margin-bottom: 15px;
+  color: #333;
+}
+
+/* Subtitle */
+.subtitle {
+  font-size: 18px;
+  color: #444;
+  margin-bottom: 20px;
+  text-align: center;
+}
+.messages-list {
+  margin-top: 20px;
+}
+
+.message-item {
+  background: rgba(255, 255, 255, 0.25);
+  padding: 15px;
+  border-radius: 10px;
+  margin-bottom: 15px;
+  backdrop-filter: blur(8px);
+}
+
+.message-item h3 {
+  margin: 0 0 10px 0;
+}
+
+.message-item p {
+  margin: 0 0 8px 0;
+}
+
+.message-item small {
+  color: #555;
+}
+.btn-delete {
+  background: #e63946;
+  color: white;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  margin-top: 10px;
+  transition: 0.2s;
+}
+
+.btn-delete:hover {
+  background: #b81d2b;
+}
+>>>>>>> 5f585ef7165fe5dab97e42c663af6c88361e6525

@@ -1,5 +1,9 @@
 import React from "react";
+<<<<<<< HEAD
 // plus besoin de "./About.css"
+=======
+
+>>>>>>> 5f585ef7165fe5dab97e42c663af6c88361e6525
 
 export default function About() {
   return (
@@ -26,6 +30,12 @@ export default function About() {
           de sécurité moderne.
         </p>
       </div>
+<<<<<<< HEAD
     </div>
   );
 }
+=======
+    </div>
+  );
+}
+>>>>>>> 5f585ef7165fe5dab97e42c663af6c88361e6525
