@@ -680,3 +680,17 @@ a {
 .message-item small {
   color: #555;
 }
+.btn-delete {
+  background: #e63946;
+  color: white;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  margin-top: 10px;
+  transition: 0.2s;
+}
+
+.btn-delete:hover {
+  background: #b81d2b;
+}

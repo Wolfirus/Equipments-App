@@ -7,6 +7,18 @@ export default function AdminMessages() {
   useEffect(() => {
     fetchMessages();
   }, []);
+  const deleteMessage = async (id) => {
+  if (!window.confirm("Voulez-vous vraiment supprimer ce message ?")) return;
+
+  try {
+    await axios.delete(`http://localhost:5000/api/messages/${id}`);
+    setMessages(messages.filter((msg) => msg._id !== id));
+  } catch (err) {
+    console.error(err);
+    alert("Erreur lors de la suppression");
+  }
+};
+
 
   const fetchMessages = async () => {
     try {
@@ -32,6 +44,10 @@ export default function AdminMessages() {
                 <h3>{msg.name} ({msg.email})</h3>
                 <p>{msg.message}</p>
                 <small>Reçu le : {new Date(msg.date).toLocaleString()}</small>
+                <button className="btn-delete" onClick={() => deleteMessage(msg._id)}>
+                    Supprimer
+                </button>
+
                 <hr />
               </div>
             ))}
@@ -39,5 +55,6 @@ export default function AdminMessages() {
         )}
       </div>
     </div>
+    
   );
 }
