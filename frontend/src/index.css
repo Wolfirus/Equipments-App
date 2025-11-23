@@ -22,7 +22,6 @@ a {
   min-height: 100vh;
 }
 
-/* NAVBAR */
 .glass-navbar {
   position: sticky;
   top: 0;
@@ -498,4 +497,101 @@ a {
   .nav-center {
     display: none;
   }
+}
+/* === Pages génériques (Contact / À propos) === */
+
+.page-container {
+  display: flex;
+  justify-content: center;
+  padding: 80px 20px;
+}
+
+.glass-card {
+  width: 100%;
+  max-width: 750px;
+  padding: 40px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  color: white;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.25);
+  animation: fadeIn 0.6s ease-out;
+}
+
+/* Contact */
+
+.contact-card {
+  max-width: 650px;
+}
+
+.contact-card h1 {
+  font-size: 32px;
+  margin-bottom: 10px;
+}
+
+.subtitle {
+  opacity: 0.8;
+  margin-bottom: 40px;
+}
+
+.contact-form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.contact-form input,
+.contact-form textarea {
+  width: 100%;
+  padding: 14px 18px;
+  border-radius: 12px;
+  border: none;
+  background: rgba(255, 255, 255, 0.15);
+  color: white;
+  font-size: 16px;
+  outline: none;
+}
+
+.btn-submit {
+  padding: 14px;
+  border-radius: 12px;
+  font-size: 18px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  color: white;
+  background: linear-gradient(135deg, #7b2ff7 0%, #9f44f6 100%);
+  transition: 0.2s ease;
+}
+
+.btn-submit:hover {
+  transform: scale(1.03);
+}
+
+/* À propos */
+
+.about-card h1 {
+  font-size: 34px;
+  margin-bottom: 20px;
+}
+
+.paragraph {
+  opacity: 0.9;
+  line-height: 1.7;
+  margin-bottom: 20px;
+  font-size: 18px;
+}
+
+/* Animation commune */
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+}
 }
