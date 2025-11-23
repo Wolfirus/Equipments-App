@@ -657,3 +657,26 @@ a {
   margin-bottom: 20px;
   text-align: center;
 }
+.messages-list {
+  margin-top: 20px;
+}
+
+.message-item {
+  background: rgba(255, 255, 255, 0.25);
+  padding: 15px;
+  border-radius: 10px;
+  margin-bottom: 15px;
+  backdrop-filter: blur(8px);
+}
+
+.message-item h3 {
+  margin: 0 0 10px 0;
+}
+
+.message-item p {
+  margin: 0 0 8px 0;
+}
+
+.message-item small {
+  color: #555;
+}

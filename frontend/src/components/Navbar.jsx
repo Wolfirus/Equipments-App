@@ -40,7 +40,14 @@ const Navbar = () => {
                 <Link to="/admin" className="nav-link">
                   Admin
                 </Link>
+                
               )}
+              {user.role === "admin" && (
+                <>
+                <Link to="/admin/messages" className="nav-link">Messages</Link>
+                </>
+)}
+
               {user.role === "supervisor" && (
                 <Link to="/supervisor" className="nav-link">
                   Superviseur

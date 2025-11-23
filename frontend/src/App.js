@@ -12,6 +12,7 @@ import SupervisorDashboard from "./pages/SupervisorDashboard";
 import UserDashboard from "./pages/UserDashboard";
 import Contact from "./pages/Contact";
 import About from "./pages/About";
+import AdminMessages from "./pages/AdminMessages";
 
 
 import "./index.css";
@@ -29,6 +30,8 @@ function App() {
 
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            <Route path="/admin/messages" element={<AdminMessages />} />
+
 
             <Route
               path="/admin"

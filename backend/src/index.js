@@ -25,21 +25,19 @@ async function ensureDefaultAdmin() {
   await User.create({
     name: "Administrateur",
     email,
-    password,   // 👈 plain password, hook will hash
+    password,
     role: "admin",
   });
 
   console.log("✅ Default admin created:", email);
 }
 
-
-
 dotenv.config();
 
 const app = express();
 
-// DB
-connectDB();
+// ❌ SUPPRIMER CETTE LIGNE : connectDB();
+// connectDB();  <-- À SUPPRIMER
 
 // middlewares
 app.use(cors());
@@ -49,6 +47,7 @@ app.use(morgan("dev"));
 // routes
 app.use("/api/auth", require("./routes/authRoutes"));
 app.use("/api/users", require("./routes/userRoutes"));
+app.use("/api/messages", require("./routes/messageRoutes"));
 
 // health check
 app.get("/", (req, res) => {
@@ -59,10 +58,10 @@ const PORT = process.env.PORT || 5000;
 
 async function startServer() {
   try {
-    // 1) Connexion à MongoDB
+    // 1) Connexion à MongoDB (UNE SEULE FOIS)
     await connectDB();
 
-    // 2) Création de l'admin par défaut si besoin
+    // 2) Création de l'admin
     await ensureDefaultAdmin();
 
     // 3) Lancer le serveur
@@ -76,4 +75,3 @@ async function startServer() {
 }
 
 startServer();
-
