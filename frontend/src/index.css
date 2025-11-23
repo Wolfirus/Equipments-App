@@ -499,3 +499,231 @@ a {
     display: none;
   }
 }
+/* === Pages génériques (Contact / À propos) === */
+
+.page-container {
+  display: flex;
+  justify-content: center;
+  padding: 80px 20px;
+}
+
+.glass-card {
+  width: 100%;
+  max-width: 750px;
+  padding: 40px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  color: white;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.25);
+  animation: fadeIn 0.6s ease-out;
+}
+
+/* Contact */
+
+.contact-card {
+  max-width: 650px;
+}
+
+.contact-card h1 {
+  font-size: 32px;
+  margin-bottom: 10px;
+}
+
+.subtitle {
+  opacity: 0.8;
+  margin-bottom: 40px;
+}
+
+.contact-form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.contact-form input,
+.contact-form textarea {
+  width: 100%;
+  padding: 14px 18px;
+  border-radius: 12px;
+  border: none;
+  background: rgba(255, 255, 255, 0.15);
+  color: white;
+  font-size: 16px;
+  outline: none;
+}
+
+.btn-submit {
+  padding: 14px;
+  border-radius: 12px;
+  font-size: 18px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  color: white;
+  background: linear-gradient(135deg, #7b2ff7 0%, #9f44f6 100%);
+  transition: 0.2s ease;
+}
+
+.btn-submit:hover {
+  transform: scale(1.03);
+}
+
+/* À propos */
+
+.about-card h1 {
+  font-size: 34px;
+  margin-bottom: 20px;
+}
+
+.paragraph {
+  opacity: 0.9;
+  line-height: 1.7;
+  margin-bottom: 20px;
+  font-size: 18px;
+}
+
+/* Animation commune */
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.dashboard-container {
+  padding: 80px 40px;
+  color: #ffffff;
+  text-align: center;
+}
+
+.dashboard-container .subtitle {
+  margin-bottom: 20px;
+}
+
+.admin-card {
+  padding: 30px;
+  margin: auto;
+  max-width: 900px;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 20px;
+  color: #ffffff;
+}
+
+.table th,
+.table td {
+  padding: 12px 10px;
+  background: rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  text-align: left;
+}
+
+.table th {
+  background: rgba(255, 255, 255, 0.15);
+  font-weight: 600;
+}
+
+.center-text {
+  margin-top: 50px;
+  font-size: 20px;
+  opacity: 0.85;
+}
+/* ==== Admin Dashboard – gestion des utilisateurs ==== */
+
+.role-select {
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: none;
+  background: rgba(15, 23, 42, 0.9);
+  color: #e5e7eb;
+  font-size: 14px;
+  outline: none;
+}
+
+.role-select:disabled {
+  opacity: 0.6;
+}
+
+/* bouton rouge suppression */
+.btn-danger {
+  background: linear-gradient(135deg, #f97373, #ef4444);
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: none;
+  color: #ffffff;
+  font-size: 13px;
+  cursor: pointer;
+  transition: transform 0.15s ease, opacity 0.15s ease;
+}
+
+.btn-danger:hover {
+  transform: scale(1.03);
+  opacity: 0.9;
+}
+
+.badge-disabled {
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  background: rgba(148, 163, 184, 0.3);
+  color: #e5e7eb;
+}
+/* ==== Admin Dashboard – Edition inline ==== */
+
+.input-inline {
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: none;
+  background: rgba(15, 23, 42, 0.9);
+  color: #e5e7eb;
+  font-size: 14px;
+  outline: none;
+  width: 100%;
+}
+
+/* boutons génériques */
+
+.btn-secondary {
+  background: rgba(148, 163, 184, 0.2);
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: none;
+  color: #e5e7eb;
+  font-size: 13px;
+  cursor: pointer;
+  margin-right: 6px;
+  transition: transform 0.15s ease, opacity 0.15s ease;
+}
+
+.btn-secondary:hover {
+  transform: scale(1.03);
+  opacity: 0.9;
+}
+
+.btn-small {
+  font-size: 12px;
+  padding: 4px 10px;
+}
+
+/* .btn-purple existe déjà, on la réutilise pour "Enregistrer" */
+
+/* badge "Mon compte" existait déjà mais au cas où : */
+.badge-disabled {
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  background: rgba(148, 163, 184, 0.3);
+  color: #e5e7eb;
+  margin-left: 6px;
+}
+
+
