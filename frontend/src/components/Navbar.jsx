@@ -28,6 +28,12 @@ const Navbar = () => {
           <Link to="/" className="nav-link">
             Accueil
           </Link>
+          <Link to="/about" className="nav-link">
+          À propos
+          </Link>
+          <Link to="/contact" className="nav-link">
+          Contact
+          </Link>
           {user && (
             <>
               {user.role === "admin" && (

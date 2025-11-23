@@ -595,3 +595,65 @@ a {
     transform: translateY(0);
 }
 }
+/* Pages container */
+.page-container {
+  display: flex;
+  justify-content: center;
+  padding: 40px 20px;
+}
+
+/* Glass effect cards */
+.glass-card {
+  width: 100%;
+  max-width: 700px;
+  background: rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(12px);
+  padding: 30px;
+  border-radius: 16px;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.1);
+  color: #222;
+}
+
+/* Contact form */
+.contact-form input,
+.contact-form textarea {
+  width: 100%;
+  padding: 12px;
+  margin-bottom: 12px;
+  border-radius: 10px;
+  border: 1px solid #ccc;
+  outline: none;
+  font-size: 16px;
+}
+
+.btn-submit {
+  width: 100%;
+  padding: 12px;
+  background-color: #2a7ae4;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 17px;
+  transition: 0.3s;
+}
+
+.btn-submit:hover {
+  background-color: #1e5eb8;
+}
+
+/* Paragraphs for about */
+.paragraph {
+  font-size: 17px;
+  line-height: 1.7;
+  margin-bottom: 15px;
+  color: #333;
+}
+
+/* Subtitle */
+.subtitle {
+  font-size: 18px;
+  color: #444;
+  margin-bottom: 20px;
+  text-align: center;
+}
