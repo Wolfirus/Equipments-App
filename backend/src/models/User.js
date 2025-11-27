@@ -26,6 +26,66 @@ const UserSchema = new mongoose.Schema(
       default: "user",
       required: true,
     },
+    // Enhanced profile fields
+    phone: {
+      type: String,
+      trim: true,
+      match: /^\+?[1-9]\d{1,14}$/,
+      default: "",
+    },
+    department: {
+      type: String,
+      enum: [
+        "General",
+        "IT",
+        "HR",
+        "Finance",
+        "Marketing",
+        "Operations",
+        "Research",
+        "Development",
+        "Sales",
+        "Support",
+        "Maintenance"
+      ],
+      default: "General",
+    },
+    bio: {
+      type: String,
+      maxlength: 500,
+      trim: true,
+      default: "",
+    },
+    avatar_url: {
+      type: String,
+      trim: true,
+      default: "",
+      validate: {
+        validator: function(v) {
+          return !v || /^https?:\/\/.+\.(jpg|jpeg|png|gif|webp)$/i.test(v);
+        },
+        message: 'Avatar URL must be a valid image URL'
+      }
+    },
+    preferences: {
+      notifications: {
+        email: { type: Boolean, default: true },
+        browser: { type: Boolean, default: true },
+        reservation_reminders: { type: Boolean, default: true },
+        equipment_available: { type: Boolean, default: true },
+        system_updates: { type: Boolean, false }
+      },
+      language: { type: String, enum: ['en', 'fr'], default: 'en' },
+      theme: { type: String, enum: ['light', 'dark', 'auto'], default: 'auto' }
+    },
+    stats: {
+      total_reservations: { type: Number, default: 0 },
+      active_reservations: { type: Number, default: 0 },
+      completed_reservations: { type: Number, default: 0 },
+      cancelled_reservations: { type: Number, default: 0 },
+      return_rate: { type: Number, default: 100 },
+      last_activity: { type: Date, default: Date.now }
+    }
   },
   { timestamps: true }
 );
