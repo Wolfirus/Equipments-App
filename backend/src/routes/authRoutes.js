@@ -25,14 +25,15 @@ router.post("/register", async (req, res) => {
       return res.status(400).json({ message: "Email déjà utilisé" });
     }
 
-    // 👉 on force le rôle pour éviter la création d'admin via /register
     const allowedRoles = ["user", "supervisor"];
-    const finalRole = allowedRoles.includes(role) ? role : "user";
+    const finalRole = allowedRoles.includes(role?.toLowerCase())
+      ? role.toLowerCase()
+      : "user";
 
     const user = await User.create({
       name,
       email,
-      password,   // hash géré dans le modèle si tu as un pre('save')
+      password, // hash via UserSchema pre('save')
       role: finalRole,
     });
 

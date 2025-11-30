@@ -1,6 +1,7 @@
 import React from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
+
 import Navbar from "./components/Navbar";
 import ProtectedRoute from "./components/ProtectedRoute";
 
@@ -14,7 +15,6 @@ import Contact from "./pages/Contact";
 import About from "./pages/About";
 import AdminMessages from "./pages/AdminMessages";
 
-
 import "./index.css";
 
 function App() {
@@ -23,16 +23,16 @@ function App() {
       <AuthProvider>
         <div className="app-root">
           <Navbar />
+
           <Routes>
+            {/* PUBLIC ROUTES */}
             <Route path="/" element={<Home />} />
             <Route path="/about" element={<About />} />
             <Route path="/contact" element={<Contact />} />
-
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
-            <Route path="/admin/messages" element={<AdminMessages />} />
 
-
+            {/* PROTECTED ADMIN ROUTES */}
             <Route
               path="/admin"
               element={
@@ -43,6 +43,16 @@ function App() {
             />
 
             <Route
+              path="/admin/messages"
+              element={
+                <ProtectedRoute roles={["admin"]}>
+                  <AdminMessages />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* SUPERVISOR ROUTE */}
+            <Route
               path="/supervisor"
               element={
                 <ProtectedRoute roles={["supervisor", "admin"]}>
@@ -51,6 +61,7 @@ function App() {
               }
             />
 
+            {/* USER ROUTE */}
             <Route
               path="/user"
               element={
@@ -60,6 +71,7 @@ function App() {
               }
             />
 
+            {/* FALLBACK */}
             <Route path="*" element={<Home />} />
           </Routes>
         </div>

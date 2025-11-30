@@ -14,6 +14,8 @@ const Navbar = () => {
   return (
     <nav className="glass-navbar">
       <div className="nav-inner">
+
+        {/* LOGO */}
         <div className="nav-left" onClick={() => navigate("/")} role="button">
           <div className="nav-logo-mark">EQ</div>
           <div className="nav-logo-text">
@@ -24,44 +26,45 @@ const Navbar = () => {
           </div>
         </div>
 
+        {/* NAVIGATION LINKS */}
         <div className="nav-center">
-          <Link to="/" className="nav-link">
-            Accueil
-          </Link>
-          <Link to="/about" className="nav-link">
-          À propos
-          </Link>
-          <Link to="/contact" className="nav-link">
-          Contact
-          </Link>
+          <Link to="/" className="nav-link">Accueil</Link>
+          <Link to="/about" className="nav-link">À propos</Link>
+          <Link to="/contact" className="nav-link">Contact</Link>
+
           {user && (
             <>
-              {user.role === "admin" && (
-                <Link to="/admin" className="nav-link">
-                  Admin
-                </Link>
-                
-              )}
+              {/* ADMIN */}
               {user.role === "admin" && (
                 <>
-                <Link to="/admin/messages" className="nav-link">Messages</Link>
+                  <Link to="/admin" className="nav-link">Admin</Link>
+                  <Link to="/admin/messages" className="nav-link">Messages</Link>
                 </>
-)}
+              )}
 
+              {/* SUPERVISEUR */}
               {user.role === "supervisor" && (
                 <Link to="/supervisor" className="nav-link">
                   Superviseur
                 </Link>
               )}
+
+              {/* UTILISATEUR */}
               {user.role === "user" && (
                 <Link to="/user" className="nav-link">
                   Utilisateur
                 </Link>
               )}
+
+              {/* MON COMPTE */}
+              <Link to="/account" className="nav-link">
+                Mon compte
+              </Link>
             </>
           )}
         </div>
 
+        {/* RIGHT SIDE: USER INFO */}
         <div className="nav-right">
           {user ? (
             <>
@@ -74,16 +77,10 @@ const Navbar = () => {
             </>
           ) : (
             <>
-              <button
-                className="btn-ghost"
-                onClick={() => navigate("/login")}
-              >
+              <button className="btn-ghost" onClick={() => navigate("/login")}>
                 Connexion
               </button>
-              <button
-                className="btn-primary"
-                onClick={() => navigate("/register")}
-              >
+              <button className="btn-primary" onClick={() => navigate("/register")}>
                 Inscription
               </button>
             </>

@@ -3,8 +3,16 @@ const cors = require("cors");
 const morgan = require("morgan");
 const dotenv = require("dotenv");
 const connectDB = require("./config/db");
-const bcrypt = require("bcryptjs");
 const User = require("./models/User");
+
+dotenv.config();
+
+const app = express();
+
+// Middlewares
+app.use(cors());
+app.use(express.json());
+app.use(morgan("dev"));
 
 async function ensureDefaultAdmin() {
   const email = process.env.ADMIN_EMAIL;
@@ -18,7 +26,7 @@ async function ensureDefaultAdmin() {
   const existingAdmin = await User.findOne({ role: "admin" });
 
   if (existingAdmin) {
-    console.log("Admin user already exists:", existingAdmin.email);
+    console.log("Admin already exists:", existingAdmin.email);
     return;
   }
 
@@ -29,27 +37,14 @@ async function ensureDefaultAdmin() {
     role: "admin",
   });
 
-  console.log("✅ Default admin created:", email);
+  console.log(" Default admin created:", email);
 }
 
-dotenv.config();
-
-const app = express();
-
-// ❌ SUPPRIMER CETTE LIGNE : connectDB();
-// connectDB();  <-- À SUPPRIMER
-
-// middlewares
-app.use(cors());
-app.use(express.json());
-app.use(morgan("dev"));
-
-// routes
+// Routes
 app.use("/api/auth", require("./routes/authRoutes"));
 app.use("/api/users", require("./routes/userRoutes"));
 app.use("/api/messages", require("./routes/messageRoutes"));
 
-// health check
 app.get("/", (req, res) => {
   res.send("API equipements OK");
 });
@@ -58,18 +53,15 @@ const PORT = process.env.PORT || 5000;
 
 async function startServer() {
   try {
-    // 1) Connexion à MongoDB (UNE SEULE FOIS)
     await connectDB();
-
-    // 2) Création de l'admin
     await ensureDefaultAdmin();
 
-    // 3) Lancer le serveur
     app.listen(PORT, () => {
-      console.log(`Server running on port ${PORT}`);
+      console.log(` Server running on port ${PORT}`);
     });
+
   } catch (err) {
-    console.error("Failed to start server:", err);
+    console.error(" Failed to start server:", err);
     process.exit(1);
   }
 }
