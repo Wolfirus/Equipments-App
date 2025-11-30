@@ -1,55 +1,17 @@
-const Message = require("../models/Message");
+const express = require("express");
+const router = require("express").Router();
+const auth = require("../middleware/auth");
+const requireRole = require("../middleware/requireRole");
+const messageController = require("../controllers/messageController");
 
-exports.createMessage = async (req, res) => {
-  try {
-    const { name, email, message } = req.body;
+// Créer un message
+router.post("/", messageController.createMessage);
 
-    const newMessage = await Message.create({
-      name,
-      email,
-      message,
-    });
+// Récupérer tous les messages (admin)
+router.get("/", auth, requireRole("admin"), messageController.getAllMessages);
 
-    res.status(201).json({
-      success: true,
-      message: "Message bien reçu",
-      data: newMessage,
-    });
+// Supprimer un message (admin)
+router.delete("/:id", auth, requireRole("admin"), messageController.deleteMessage);
 
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-};
-
-// ADMIN : get all messages
-exports.getAllMessages = async (req, res) => {
-  try {
-    const messages = await Message.find().sort({ date: -1 });
-
-    res.status(200).json({
-      success: true,
-      count: messages.length,
-      data: messages,
-    });
-
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-};
-
-// ADMIN : delete one message
-exports.deleteMessage = async (req, res) => {
-  try {
-    const message = await Message.findByIdAndDelete(req.params.id);
-
-    if (!message) {
-      return res.status(404).json({ success: false, message: "Message introuvable" });
-    }
-
-    res.status(200).json({ success: true, message: "Message supprimé" });
-
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-};
+module.exports = router;
 

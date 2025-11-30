@@ -13,6 +13,9 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 app.use(morgan("dev"));
+app.use('/uploads', express.static('uploads'));
+
+
 
 async function ensureDefaultAdmin() {
   const email = process.env.ADMIN_EMAIL;

@@ -11,6 +11,7 @@ import Register from "./pages/Register";
 import AdminDashboard from "./pages/AdminDashboard";
 import SupervisorDashboard from "./pages/SupervisorDashboard";
 import UserDashboard from "./pages/UserDashboard";
+import UserAccount from "./pages/UserAccount"; // ajout
 import Contact from "./pages/Contact";
 import About from "./pages/About";
 import AdminMessages from "./pages/AdminMessages";
@@ -32,6 +33,16 @@ function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
 
+            {/* USER ACCOUNT ROUTE */}
+            <Route
+              path="/account"
+              element={
+                <ProtectedRoute roles={["user", "supervisor", "admin"]}>
+                  <UserAccount />
+                </ProtectedRoute>
+              }
+            />
+
             {/* PROTECTED ADMIN ROUTES */}
             <Route
               path="/admin"
@@ -41,7 +52,6 @@ function App() {
                 </ProtectedRoute>
               }
             />
-
             <Route
               path="/admin/messages"
               element={

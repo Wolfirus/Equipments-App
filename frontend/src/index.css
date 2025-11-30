@@ -758,3 +758,51 @@ a {
 .btn-delete:hover {
   background: #b81d2b;
 }
+.glass-card input[type="file"] {
+  padding: 8px;
+  border-radius: 8px;
+  border: 1px solid rgba(0,0,0,0.2);
+  background: rgba(255,255,255,0.2);
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.glass-card input[type="file"]:hover {
+  background: rgba(255,255,255,0.3);
+}
+.glass-card img {
+  border-radius: 50%;
+  border: 2px solid #3498db;
+  width: 100px;
+  height: 100px;
+  object-fit: cover;
+  margin-bottom: 10px;
+  transition: transform 0.2s;
+}
+.glass-card img:hover {
+  transform: scale(1.05);
+}
+.auth-error {
+  background-color: #f8d7da;
+  color: #721c24;
+  padding: 10px 15px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  text-align: center;
+}
+.account-form label {
+  margin-bottom: 5px;
+  display: block;
+}
+.account-form input {
+  width: 100%;
+}
+@media (max-width: 600px) {
+  .glass-card {
+    padding: 20px;
+  }
+  .btn-primary, .btn-secondary {
+    width: 100%;
+    padding: 12px;
+  }
+}
+
