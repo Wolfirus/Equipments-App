@@ -50,13 +50,14 @@ export default function Contact() {
             onChange={handleChange}
           />
 
-          <textarea>
+          <textarea
             name="message"
             placeholder="Votre message"
             rows="5"
             required
             onChange={handleChange}
-          </textarea>
+            value={form.message}
+          />
 
           <button type="submit" className="btn-submit">
             Envoyer
