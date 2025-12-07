@@ -48,6 +48,14 @@ app.use("/api/auth", require("./routes/authRoutes"));
 app.use("/api/users", require("./routes/userRoutes"));
 app.use("/api/messages", require("./routes/messageRoutes"));
 
+// New equipment management routes
+app.use("/api/equipment", require("./routes/equipmentRoutes"));
+app.use("/api/reservations", require("./routes/reservationRoutes"));
+app.use("/api/categories", require("./routes/categoryRoutes"));
+app.use("/api/profile", require("./routes/profileRoutes"));
+app.use("/api/notifications", require("./routes/notificationRoutes"));
+app.use("/api/admin", require("./routes/adminRoutes"));
+
 app.get("/", (req, res) => {
   res.send("API equipements OK");
 });
