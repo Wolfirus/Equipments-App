@@ -3,25 +3,31 @@ import React, { createContext, useContext, useEffect, useState } from "react";
 const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);   // { id, name, email, role }
+  const [user, setUser] = useState(null);   
   const [token, setToken] = useState(null);
   const [loading, setLoading] = useState(true);
+
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
 
+  /** INIT AUTH STATE FROM LOCAL STORAGE */
   useEffect(() => {
     try {
       const storedUser = localStorage.getItem("auth_user");
       const storedToken = localStorage.getItem("auth_token");
 
-    if (storedUser && storedToken) {
-      setUser(JSON.parse(storedUser));
-      setToken(storedToken);
+      if (storedUser && storedToken) {
+        setUser(JSON.parse(storedUser));
+        setToken(storedToken);
+      }
+    } catch (error) {
+      console.error("Erreur lors du chargement du stockage local :", error);
     }
+
     setLoading(false);
   }, []);
 
-  // Fetch user profile data when user is logged in
+  /** FETCH PROFILE + NOTIFICATIONS WHEN USER LOGS IN */
   useEffect(() => {
     if (user && token) {
       fetchUserProfile();
@@ -29,29 +35,22 @@ export const AuthProvider = ({ children }) => {
     }
   }, [user, token]);
 
+  /** FETCH USER PROFILE */
   const fetchUserProfile = async () => {
     try {
-      const response = await fetch('/api/profile', {
+      const response = await fetch("/api/profile", {
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
       });
 
       if (response.ok) {
         const data = await response.json();
         if (data.success) {
-          // Update user with enhanced profile data
-          setUser(prevUser => ({
-            ...prevUser,
-            ...data.data
-          }));
-
-          // Update localStorage with new user data
-          localStorage.setItem("auth_user", JSON.stringify({
-            ...user,
-            ...data.data
-          }));
+          const updatedUser = { ...user, ...data.data };
+          setUser(updatedUser);
+          localStorage.setItem("auth_user", JSON.stringify(updatedUser));
         }
       }
     } catch (error) {
@@ -59,13 +58,14 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  /** FETCH NOTIFICATIONS */
   const fetchNotifications = async () => {
     try {
-      const response = await fetch('/api/notifications/unread?limit=10', {
+      const response = await fetch("/api/notifications/unread?limit=10", {
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
       });
 
       if (response.ok) {
@@ -80,32 +80,25 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  /** UPDATE PROFILE */
   const updateProfile = async (profileData) => {
     try {
-      const response = await fetch('/api/profile', {
-        method: 'PUT',
+      const response = await fetch("/api/profile", {
+        method: "PUT",
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
         },
-        body: JSON.stringify(profileData)
+        body: JSON.stringify(profileData),
       });
 
       if (response.ok) {
         const data = await response.json();
+
         if (data.success) {
-          // Update local user state
-          setUser(prevUser => ({
-            ...prevUser,
-            ...data.data
-          }));
-
-          // Update localStorage
-          localStorage.setItem("auth_user", JSON.stringify({
-            ...user,
-            ...data.data
-          }));
-
+          const updatedUser = { ...user, ...data.data };
+          setUser(updatedUser);
+          localStorage.setItem("auth_user", JSON.stringify(updatedUser));
           return { success: true, data: data.data };
         }
       } else {
@@ -117,37 +110,31 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  /** UPDATE PREFERENCES */
   const updatePreferences = async (preferences) => {
     try {
-      const response = await fetch('/api/profile/preferences', {
-        method: 'PUT',
+      const response = await fetch("/api/profile/preferences", {
+        method: "PUT",
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
         },
-        body: JSON.stringify(preferences)
+        body: JSON.stringify(preferences),
       });
 
       if (response.ok) {
         const data = await response.json();
-        if (data.success) {
-          // Update user preferences in local state
-          setUser(prevUser => ({
-            ...prevUser,
-            preferences: {
-              ...prevUser.preferences,
-              ...data.data
-            }
-          }));
 
-          // Update localStorage
+        if (data.success) {
           const updatedUser = {
             ...user,
             preferences: {
               ...user.preferences,
-              ...data.data
-            }
+              ...data.data,
+            },
           };
+
+          setUser(updatedUser);
           localStorage.setItem("auth_user", JSON.stringify(updatedUser));
 
           return { success: true, data: data.data };
@@ -161,19 +148,20 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  /** CHANGE PASSWORD */
   const changePassword = async (currentPassword, newPassword) => {
     try {
-      const response = await fetch('/api/profile/password', {
-        method: 'PUT',
+      const response = await fetch("/api/profile/password", {
+        method: "PUT",
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           current_password: currentPassword,
           new_password: newPassword,
-          confirm_password: newPassword
-        })
+          confirm_password: newPassword,
+        }),
       });
 
       if (response.ok) {
@@ -188,36 +176,29 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  /** MARK NOTIFICATIONS AS READ */
   const markNotificationsAsRead = async (notificationIds) => {
     try {
-      if (!Array.isArray(notificationIds)) {
-        // Single notification
-        const response = await fetch(`/api/notifications/${notificationIds}/read`, {
-          method: 'PUT',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        });
+      const endpoint = Array.isArray(notificationIds)
+        ? "/api/notifications/read-all"
+        : `/api/notifications/${notificationIds}/read`;
 
-        if (response.ok) {
-          setUnreadCount(prev => Math.max(0, prev - 1));
-          return { success: true };
-        }
-      } else {
-        // Multiple notifications - mark all as read
-        const response = await fetch('/api/notifications/read-all', {
-          method: 'PUT',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        });
+      const response = await fetch(endpoint, {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
 
-        if (response.ok) {
+      if (response.ok) {
+        if (!Array.isArray(notificationIds)) {
+          setUnreadCount((prev) => Math.max(0, prev - 1));
+        } else {
           setUnreadCount(0);
-          return { success: true };
         }
+
+        return { success: true };
       }
     } catch (error) {
       console.error("Failed to mark notifications as read:", error);
@@ -225,16 +206,15 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  /** REFRESH NOTIFICATION LIST */
   const refreshNotifications = async () => {
     await fetchNotifications();
   };
 
-  // Connexion
+  /** LOGIN */
   const login = (userData, jwtToken) => {
-    // Merge with any existing enhanced data
     const fullUserData = {
       ...userData,
-      // Default profile fields that might not be in login response
       phone: userData.phone || "",
       department: userData.department || "General",
       bio: userData.bio || "",
@@ -245,10 +225,10 @@ export const AuthProvider = ({ children }) => {
           browser: true,
           reservation_reminders: true,
           equipment_available: true,
-          system_updates: false
+          system_updates: false,
         },
-        language: 'en',
-        theme: 'auto'
+        language: "en",
+        theme: "auto",
       },
       stats: userData.stats || {
         total_reservations: 0,
@@ -256,17 +236,18 @@ export const AuthProvider = ({ children }) => {
         completed_reservations: 0,
         cancelled_reservations: 0,
         return_rate: 100,
-        last_activity: new Date()
-      }
+        last_activity: new Date(),
+      },
     };
 
     setUser(fullUserData);
     setToken(jwtToken);
-    localStorage.setItem("auth_user", JSON.stringify(userData));
+
+    localStorage.setItem("auth_user", JSON.stringify(fullUserData));
     localStorage.setItem("auth_token", jwtToken);
   };
 
-  // Déconnexion
+  /** LOGOUT */
   const logout = () => {
     setUser(null);
     setToken(null);
@@ -274,6 +255,7 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem("auth_token");
   };
 
+  /** CONTEXT EXPORT */
   const contextValue = {
     user,
     token,
@@ -287,7 +269,7 @@ export const AuthProvider = ({ children }) => {
     changePassword,
     markNotificationsAsRead,
     refreshNotifications,
-    fetchUserProfile
+    fetchUserProfile,
   };
 
   return (

@@ -16,6 +16,11 @@ import Contact from "./pages/Contact";
 import About from "./pages/About";
 import AdminMessages from "./pages/AdminMessages";
 
+// New pages
+import EquipmentCatalog from "./pages/EquipmentCatalog";
+import ReservationManagement from "./pages/ReservationManagement";
+import ProfilePage from "./pages/ProfilePage";
+
 
 import "./index.css";
 
@@ -31,10 +36,47 @@ function App() {
             <Route path="/about" element={<About />} />
             <Route path="/contact" element={<Contact />} />
 
+            {/* NEW ROUTES */}
+            <Route
+              path="/equipment"
+              element={
+                <ProtectedRoute roles={["user", "supervisor", "admin"]}>
+                  <EquipmentCatalog />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* single equipment view */}
+            <Route
+              path="/equipment/:id"
+              element={
+                <ProtectedRoute roles={["user", "supervisor", "admin"]}>
+                  <EquipmentCatalog />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/reservations"
+              element={
+                <ProtectedRoute roles={["user", "supervisor", "admin"]}>
+                  <ReservationManagement />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/profile"
+              element={
+                <ProtectedRoute roles={["user", "supervisor", "admin"]}>
+                  <ProfilePage />
+                </ProtectedRoute>
+              }
+            />
+
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/admin/messages" element={<AdminMessages />} />
-
 
             <Route
               path="/admin"
@@ -63,6 +105,7 @@ function App() {
               }
             />
 
+            {/* fallback */}
             <Route path="*" element={<Home />} />
           </Routes>
         </div>

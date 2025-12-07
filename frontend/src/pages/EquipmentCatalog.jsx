@@ -10,7 +10,7 @@ const EquipmentCatalog = () => {
   const { id } = useParams();
   const location = useLocation();
 
-  // State for equipment, filters, and loading
+  // State
   const [equipment, setEquipment] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -25,34 +25,43 @@ const EquipmentCatalog = () => {
   const [categories, setCategories] = useState([]);
   const [showFilters, setShowFilters] = useState(false);
 
-  // Check if viewing single equipment
   const isSingleView = !!id;
 
-  // Filter params from URL
+  /** Load URL filters from search params */
   useEffect(() => {
     const params = new URLSearchParams(location.search);
+
     setSearchTerm(params.get('search') || '');
     setSelectedCategory(params.get('category') || '');
     setSelectedStatus(params.get('status') || '');
     setSelectedAvailability(params.get('available') === 'true');
     setSortBy(params.get('sort') || 'name');
     setSortOrder(params.get('order') || 'asc');
-    setCurrentPage(parseInt(params.get('page')) || 1);
+    setCurrentPage(parseInt(params.get('page') || '1'));
   }, [location.search]);
 
-  // Fetch categories on component mount
+  /** Load categories */
   useEffect(() => {
     fetchCategories();
   }, []);
 
-  // Fetch equipment when filters change
+  /** Load equipment list or single equipment */
   useEffect(() => {
     if (!isSingleView) {
       fetchEquipment();
     } else {
       fetchSingleEquipment();
     }
-  }, [searchTerm, selectedCategory, selectedStatus, selectedAvailability, sortBy, sortOrder, currentPage, isSingleView]);
+  }, [
+    searchTerm,
+    selectedCategory,
+    selectedStatus,
+    selectedAvailability,
+    sortBy,
+    sortOrder,
+    currentPage,
+    isSingleView
+  ]);
 
   const fetchCategories = async () => {
     try {
@@ -82,6 +91,7 @@ const EquipmentCatalog = () => {
       };
 
       const response = await equipmentAPI.getEquipment(params);
+
       if (response.success) {
         setEquipment(response.data.equipment);
         setTotalPages(response.data.pagination.pages);
@@ -113,36 +123,54 @@ const EquipmentCatalog = () => {
     }
   };
 
+  /** URL Update Fix */
+  const updateURL = () => {
+    const params = new URLSearchParams();
+
+    if (searchTerm) params.set('search', searchTerm);
+    if (selectedCategory) params.set('category', selectedCategory);
+    if (selectedStatus) params.set('status', selectedStatus);
+    if (selectedAvailability) params.set('available', 'true');
+    if (sortBy) params.set('sort', sortBy);
+    if (sortOrder) params.set('order', sortOrder);
+    if (currentPage > 1) params.set('page', String(currentPage));
+
+    const query = params.toString();
+    const newURL = query ? `${location.pathname}?${query}` : location.pathname;
+
+    navigate(newURL, { replace: true });
+  };
+
+  /** Input Handlers */
   const handleSearch = (e) => {
-    const value = e.target.value;
-    setSearchTerm(value);
+    setSearchTerm(e.target.value);
     setCurrentPage(1);
     updateURL();
   };
 
-  const handleCategoryChange = (category) => {
-    setSelectedCategory(category);
+  const handleCategoryChange = (value) => {
+    setSelectedCategory(value);
     setCurrentPage(1);
     updateURL();
   };
 
-  const handleStatusChange = (status) => {
-    setSelectedStatus(status);
+  const handleStatusChange = (value) => {
+    setSelectedStatus(value);
     setCurrentPage(1);
     updateURL();
   };
 
-  const handleAvailabilityChange = (available) => {
-    setSelectedAvailability(available);
+  const handleAvailabilityChange = (value) => {
+    setSelectedAvailability(value);
     setCurrentPage(1);
     updateURL();
   };
 
-  const handleSort = (newSortBy) => {
-    if (newSortBy === sortBy) {
+  const handleSort = (field) => {
+    if (field === sortBy) {
       setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
     } else {
-      setSortBy(newSortBy);
+      setSortBy(field);
       setSortOrder('asc');
     }
     setCurrentPage(1);
@@ -155,23 +183,7 @@ const EquipmentCatalog = () => {
   };
 
   const handleReserve = (equipmentId) => {
-    // Navigate to reservation page with pre-filled equipment
     navigate(`/reservations?equipment=${equipmentId}`);
-  };
-
-  const updateURL = () => {
-    const params = new URLSearchParams();
-
-    if (searchTerm) params.set('search', searchTerm);
-    if (selectedCategory) params.set('category', selectedCategory);
-    if (selectedStatus) params.set('status', selectedStatus);
-    if (selectedAvailability) params.set('available', 'true');
-    if (sortBy) params.set('sort', sortBy);
-    if (sortOrder) params.set('order', sortOrder);
-    if (currentPage > 1) params.set('page', currentPage);
-
-    const newURL = `${location.pathname}${params.toString()}`;
-    navigate(newURL, { replace: true });
   };
 
   const clearFilters = () => {
@@ -185,7 +197,7 @@ const EquipmentCatalog = () => {
     updateURL();
   };
 
-  // Single equipment view
+  /** Single Equipment View */
   if (isSingleView) {
     if (loading) {
       return (
@@ -245,7 +257,7 @@ const EquipmentCatalog = () => {
     );
   }
 
-  // Catalog view
+  /** Catalog View */
   return (
     <div className="equipment-catalog">
       <div className="catalog-header">
@@ -278,9 +290,7 @@ const EquipmentCatalog = () => {
             >
               <option value="">Toutes catégories</option>
               {categories.map(category => (
-                <option key={category} value={category}>
-                  {category}
-                </option>
+                <option key={category} value={category}>{category}</option>
               ))}
             </select>
 
@@ -306,20 +316,14 @@ const EquipmentCatalog = () => {
             </select>
 
             <button
-              onClick={() => {
-                setSelectedAvailability(!selectedAvailability);
-                setCurrentPage(1);
-                updateURL();
-              }}
+              onClick={() => handleAvailabilityChange(!selectedAvailability)}
               className={`btn-toggle ${selectedAvailability ? 'active' : ''}`}
             >
               {selectedAvailability ? 'Disponible seulement' : 'Inclure indisponible'}
             </button>
 
             {(searchTerm || selectedCategory || selectedStatus || selectedAvailability || sortBy !== 'name') && (
-              <button className="btn-ghost" onClick={clearFilters}>
-                Réinitialiser
-              </button>
+              <button className="btn-ghost" onClick={clearFilters}>Réinitialiser</button>
             )}
           </div>
         </div>
@@ -334,10 +338,7 @@ const EquipmentCatalog = () => {
           <div className="glass-card">
             <h2>Erreur</h2>
             <p>{error}</p>
-            <button className="btn-primary" onClick={() => {
-              setError(null);
-              fetchEquipment();
-            }}>
+            <button className="btn-primary" onClick={() => { setError(null); fetchEquipment(); }}>
               Réessayer
             </button>
           </div>
@@ -350,16 +351,11 @@ const EquipmentCatalog = () => {
                 <h2>Aucun équipement trouvé</h2>
                 <p>
                   {searchTerm || selectedCategory || selectedStatus || selectedAvailability
-                    ? 'Aucun équipement ne correspond à vos critères.'
-                    : 'Aucun équipement disponible pour le moment.'}
+                    ? "Aucun équipement ne correspond à vos critères."
+                    : "Aucun équipement disponible pour le moment."}
                 </p>
-                <button
-                  className="btn-primary"
-                  onClick={() => {
-                    clearFilters();
-                    fetchEquipment();
-                  }}
-                >
+
+                <button className="btn-primary" onClick={() => { clearFilters(); fetchEquipment(); }}>
                   Réinitialiser
                 </button>
               </div>
@@ -379,7 +375,6 @@ const EquipmentCatalog = () => {
         </div>
       )}
 
-      {/* Pagination */}
       {totalPages > 1 && !loading && !error && (
         <div className="catalog-pagination">
           <button
