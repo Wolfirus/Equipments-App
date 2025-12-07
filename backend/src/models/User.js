@@ -73,7 +73,7 @@ const UserSchema = new mongoose.Schema(
         browser: { type: Boolean, default: true },
         reservation_reminders: { type: Boolean, default: true },
         equipment_available: { type: Boolean, default: true },
-        system_updates: { type: Boolean, false }
+        system_updates: { type: Boolean, default: false }
       },
       language: { type: String, enum: ['en', 'fr'], default: 'en' },
       theme: { type: String, enum: ['light', 'dark', 'auto'], default: 'auto' }

@@ -128,7 +128,7 @@ const EquipmentCard = ({ equipment, onReserve, compact = false }) => {
             </div>
           )}
 
-          <equipment.location && (
+          {equipment.location && (
             <div className="equipment-card-spec">
               <span className="spec-label">Lieu:</span>
               <span className="spec-value">{equipment.location}</span>

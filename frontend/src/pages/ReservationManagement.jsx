@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { reservationAPI, equipmentAPI } from '../services/api';
-import './EquipmentCard'; // Assuming this exists
+import EquipmentCard from "../components/EquipmentCard";
 
 const ReservationManagement = () => {
   const { user, token } = useAuth();
@@ -253,7 +253,6 @@ const ReservationManagement = () => {
                         {reservation.status === 'completed' && 'Terminée'}
                         {reservation.status === 'cancelled' && 'Annulée'}
                       </span>
-                      </span>
                       <span className="reservation-dates">
                         {formatDate(reservation.start_date)} - {formatDate(reservation.end_date)}
                       </span>
@@ -395,6 +394,7 @@ const ReservationManagement = () => {
           </div>
         </div>
       );
+    };
   };
 
   return (

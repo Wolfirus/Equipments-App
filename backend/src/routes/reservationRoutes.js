@@ -101,7 +101,7 @@ router.get("/", auth, async (req, res) => {
     } else if (start_date) {
       query.end_date = { $gte: new Date(start_date) };
     } else if (end_date) {
-      query.start_date: { $lte: new Date(end_date) };
+      query.start_date = { $lte: new Date(end_date) };
     }
 
     // Sorting

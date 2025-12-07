@@ -156,10 +156,9 @@ const ProfilePage = () => {
   };
 
   const handleDeleteAccount = async () => {
-    if (!confirm('Êtes-vous sûr de vouloir supprimer votre compte ? Cette action est irréversible.')) {
+    if (!window.confirm('Êtes-vous sûr de vouloir supprimer votre compte ? Cette action est irréversible.')) {
       return;
     }
-
     try {
       const response = await profileAPI.deleteAccount('DELETE_MY_ACCOUNT');
       if (response.success) {
@@ -312,7 +311,7 @@ const ProfilePage = () => {
                   type="checkbox"
                   name="email_notifications"
                   defaultChecked={profileData.preferences.notifications.email}
-                  defaultChecked disabled
+                  disabled
                 />
                 Notifications par email
               </label>
@@ -324,7 +323,7 @@ const ProfilePage = () => {
                   type="checkbox"
                   name="browser_notifications"
                   defaultChecked={profileData.preferences.notifications.browser}
-                  defaultChecked disabled
+                  disabled
                 />
                 Notifications navigateur
               </label>
@@ -336,7 +335,7 @@ const ProfilePage = () => {
                   type="checkbox"
                   name="reservation_reminders"
                   defaultChecked={profileData.preferences.notifications.reservation_reminders}
-                  defaultChecked disabled
+                  disabled
                 />
                 Rappels de réservation
               </label>
@@ -348,7 +347,7 @@ const ProfilePage = () => {
                   type="checkbox"
                   name="equipment_available"
                   defaultChecked={profileData.preferences.notifications.equipment_available}
-                  defaultChecked disabled
+                  disabled
                 />
                 Disponibilité des équipements
               </label>
@@ -360,7 +359,7 @@ const ProfilePage = () => {
                   type="checkbox"
                   name="system_updates"
                   defaultChecked={profileData.preferences.notifications.system_updates}
-                  defaultChecked disabled
+                  disabled
                 />
                 Mises à jour système
               </label>
@@ -458,8 +457,9 @@ const ProfilePage = () => {
             </button>
           </div>
         )}
-      </div>
-    );
+      </div>        
+    </div>          
+  );
 };
 
 export default ProfilePage;
