@@ -1,29 +1,17 @@
 const express = require("express");
-const router = express.Router();
-const { createMessage } = require("../controllers/messageController");
-const Message = require("../models/Message");
+const router = require("express").Router();
+const auth = require("../middleware/auth");
+const requireRole = require("../middleware/requireRole");
+const messageController = require("../controllers/messageController");
 
-// POST — Enregistrer un message
-router.post("/", createMessage);
+// Créer un message
+router.post("/", messageController.createMessage);
 
-// GET — Récupérer tous les messages
-router.get("/", async (req, res) => {
-  try {
-    const messages = await Message.find().sort({ date: -1 });
-    res.json({ success: true, data: messages });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
+// Récupérer tous les messages (admin)
+router.get("/", auth, requireRole("admin"), messageController.getAllMessages);
 
-// DELETE — Supprimer un message
-router.delete("/:id", async (req, res) => {
-  try {
-    await Message.findByIdAndDelete(req.params.id);
-    res.json({ success: true, message: "Message supprimé" });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
+// Supprimer un message (admin)
+router.delete("/:id", auth, requireRole("admin"), messageController.deleteMessage);
 
 module.exports = router;
+

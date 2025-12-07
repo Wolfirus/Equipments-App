@@ -7,7 +7,7 @@ exports.createMessage = async (req, res) => {
     const newMessage = await Message.create({
       name,
       email,
-      message
+      message,
     });
 
     res.status(201).json({
@@ -20,3 +20,22 @@ exports.createMessage = async (req, res) => {
     res.status(500).json({ success: false, error: error.message });
   }
 };
+
+exports.getAllMessages = async (req, res) => {
+  try {
+    const messages = await Message.find().sort({ date: -1 });
+    res.json({ success: true, data: messages });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+exports.deleteMessage = async (req, res) => {
+  try {
+    await Message.findByIdAndDelete(req.params.id);
+    res.json({ success: true, message: "Message supprimé" });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
