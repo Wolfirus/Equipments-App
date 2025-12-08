@@ -46,7 +46,7 @@ const Navbar = () => {
     {
       path: "/reservations",
       label: "Réservations",
-      roles: ["user", "supervisor", "admin"],
+      roles: ["supervisor", "admin"],
       icon: "📅",
     },
     {
