@@ -36,7 +36,6 @@ function App() {
             <Route path="/about" element={<About />} />
             <Route path="/contact" element={<Contact />} />
 
-            {/* NEW ROUTES */}
             <Route
               path="/equipment"
               element={
@@ -46,7 +45,7 @@ function App() {
               }
             />
 
-            {/* single equipment view */}
+            
             <Route
               path="/equipment/:id"
               element={
