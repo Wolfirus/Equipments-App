@@ -196,13 +196,14 @@ export const reservationAPI = {
   },
 
   // Reject reservation (supervisor/admin)
-  rejectReservation: async (id, reason) => {
+  rejectReservation: async (id, notes) => {
     return apiRequest(`/reservations/${id}/reject`, {
       method: 'PUT',
       requireAuth: true,
-      body: { reason }
+      body: { notes }
     });
   },
+
 
   // Cancel reservation
   cancelReservation: async (id, reason) => {

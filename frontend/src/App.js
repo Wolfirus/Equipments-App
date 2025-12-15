@@ -1,11 +1,13 @@
+// src/App.js
 import React from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
 
 import Navbar from "./components/Navbar";
 import ProtectedRoute from "./components/ProtectedRoute";
+import AppLayout from "./layout/AppLayout";
 
-// Existing pages
+// pages...
 import Home from "./pages/Home";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
@@ -15,14 +17,15 @@ import UserDashboard from "./pages/UserDashboard";
 import Contact from "./pages/Contact";
 import About from "./pages/About";
 import AdminMessages from "./pages/AdminMessages";
-
-// New pages
 import EquipmentCatalog from "./pages/EquipmentCatalog";
 import ReservationManagement from "./pages/ReservationManagement";
 import ProfilePage from "./pages/ProfilePage";
 
+// ✅ ADD THIS IMPORT
+import SupervisorReservations from "./pages/SupervisorReservations";
 
 import "./index.css";
+import "./App.css";
 
 function App() {
   return (
@@ -32,26 +35,32 @@ function App() {
           <Navbar />
 
           <Routes>
+            {/* PUBLIC */}
             <Route path="/" element={<Home />} />
             <Route path="/about" element={<About />} />
             <Route path="/contact" element={<Contact />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
 
-            {/* NEW ROUTES */}
+            {/* APP PAGES WITH LAYOUT + PROTECTION */}
             <Route
               path="/equipment"
               element={
                 <ProtectedRoute roles={["user", "supervisor", "admin"]}>
-                  <EquipmentCatalog />
+                  <AppLayout>
+                    <EquipmentCatalog />
+                  </AppLayout>
                 </ProtectedRoute>
               }
             />
 
-            {/* single equipment view */}
             <Route
               path="/equipment/:id"
               element={
                 <ProtectedRoute roles={["user", "supervisor", "admin"]}>
-                  <EquipmentCatalog />
+                  <AppLayout>
+                    <EquipmentCatalog />
+                  </AppLayout>
                 </ProtectedRoute>
               }
             />
@@ -60,7 +69,9 @@ function App() {
               path="/reservations"
               element={
                 <ProtectedRoute roles={["user", "supervisor", "admin"]}>
-                  <ReservationManagement />
+                  <AppLayout>
+                    <ReservationManagement />
+                  </AppLayout>
                 </ProtectedRoute>
               }
             />
@@ -69,20 +80,31 @@ function App() {
               path="/profile"
               element={
                 <ProtectedRoute roles={["user", "supervisor", "admin"]}>
-                  <ProfilePage />
+                  <AppLayout>
+                    <ProfilePage />
+                  </AppLayout>
                 </ProtectedRoute>
               }
             />
-
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
-            <Route path="/admin/messages" element={<AdminMessages />} />
 
             <Route
               path="/admin"
               element={
                 <ProtectedRoute roles={["admin"]}>
-                  <AdminDashboard />
+                  <AppLayout>
+                    <AdminDashboard />
+                  </AppLayout>
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/admin/messages"
+              element={
+                <ProtectedRoute roles={["admin"]}>
+                  <AppLayout>
+                    <AdminMessages />
+                  </AppLayout>
                 </ProtectedRoute>
               }
             />
@@ -91,7 +113,20 @@ function App() {
               path="/supervisor"
               element={
                 <ProtectedRoute roles={["supervisor", "admin"]}>
-                  <SupervisorDashboard />
+                  <AppLayout>
+                    <SupervisorDashboard />
+                  </AppLayout>
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/supervisor/reservations"
+              element={
+                <ProtectedRoute roles={["supervisor", "admin"]}>
+                  <AppLayout>
+                    <SupervisorReservations />
+                  </AppLayout>
                 </ProtectedRoute>
               }
             />
@@ -100,12 +135,14 @@ function App() {
               path="/user"
               element={
                 <ProtectedRoute roles={["user", "supervisor", "admin"]}>
-                  <UserDashboard />
+                  <AppLayout>
+                    <UserDashboard />
+                  </AppLayout>
                 </ProtectedRoute>
               }
             />
 
-            {/* fallback */}
+            {/* FALLBACK */}
             <Route path="*" element={<Home />} />
           </Routes>
         </div>

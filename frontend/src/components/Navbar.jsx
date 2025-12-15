@@ -9,6 +9,12 @@ const Navbar = () => {
   const [showNotifications, setShowNotifications] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
 
+  // 👉 Thème light/dark (stocké dans localStorage)
+  const [theme, setTheme] = useState(() => {
+    if (typeof window === "undefined") return "light";
+    return localStorage.getItem("theme") || "light";
+  });
+
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth <= 768);
     checkMobile();
@@ -16,16 +22,29 @@ const Navbar = () => {
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme", theme);
+    localStorage.setItem("theme", theme);
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme((prev) => (prev === "light" ? "dark" : "light"));
+  };
+
   const handleLogout = () => {
     logout();
     navigate("/");
   };
 
   const toggleNotifications = () => {
-    setShowNotifications(!showNotifications);
-    if (showNotifications && unreadCount > 0) {
-      markNotificationsAsRead();
-    }
+    setShowNotifications((prev) => {
+      const next = !prev;
+      if (next && unreadCount > 0) {
+        // on marque comme lues quand on OUVRE le panneau
+        markNotificationsAsRead();
+      }
+      return next;
+    });
   };
 
   const isActivePath = (path) => location.pathname.startsWith(path);
@@ -88,13 +107,18 @@ const Navbar = () => {
     <>
       <nav className="glass-navbar">
         <div className="nav-inner">
-
           {/* LOGO */}
-          <div className="nav-left" onClick={() => navigate("/")} role="button">
+          <div
+            className="nav-left"
+            onClick={() => navigate("/")}
+            role="button"
+          >
             <div className="nav-logo-mark">EQ</div>
             <div className="nav-logo-text">
               <span className="nav-logo-title">Équipements</span>
-              <span className="nav-logo-subtitle">Plateforme de réservation</span>
+              <span className="nav-logo-subtitle">
+                Plateforme de réservation
+              </span>
             </div>
           </div>
 
@@ -127,7 +151,11 @@ const Navbar = () => {
                     </Link>
                     <div className="nav-dropdown-menu">
                       {link.submenu.map((sub) => (
-                        <Link key={sub.path} to={sub.path} className="nav-dropdown-item">
+                        <Link
+                          key={sub.path}
+                          to={sub.path}
+                          className="nav-dropdown-item"
+                        >
                           {sub.label}
                         </Link>
                       ))}
@@ -137,7 +165,9 @@ const Navbar = () => {
                   <Link
                     key={link.path}
                     to={link.path}
-                    className={`nav-link ${isActivePath(link.path) ? "active-path" : ""}`}
+                    className={`nav-link ${
+                      isActivePath(link.path) ? "active-path" : ""
+                    }`}
                   >
                     <span className="nav-link-icon">{link.icon}</span>
                     {link.label}
@@ -148,6 +178,16 @@ const Navbar = () => {
 
           {/* RIGHT SECTION */}
           <div className="nav-right">
+            {/* Theme toggle */}
+            <button
+              className="theme-toggle"
+              type="button"
+              onClick={toggleTheme}
+              aria-label="Changer le thème"
+            >
+              {theme === "light" ? "🌙" : "☀️"}
+            </button>
+
             {user ? (
               <>
                 {/* Notifications */}
@@ -158,13 +198,18 @@ const Navbar = () => {
                 >
                   <span className="nav-notification-icon">🔔</span>
                   {unreadCount > 0 && (
-                    <span className="nav-notification-badge">{unreadCount}</span>
+                    <span className="nav-notification-badge">
+                      {unreadCount}
+                    </span>
                   )}
                 </div>
 
                 {/* USER PROFILE */}
                 <div className="nav-user-section">
-                  <div className="nav-user-info" onClick={() => navigate("/profile")}>
+                  <div
+                    className="nav-user-info"
+                    onClick={() => navigate("/profile")}
+                  >
                     <div className="nav-user-avatar">
                       <div className="nav-avatar-fallback">
                         {user.name.charAt(0).toUpperCase()}
@@ -183,10 +228,16 @@ const Navbar = () => {
               </>
             ) : (
               <>
-                <button className="btn-ghost" onClick={() => navigate("/login")}>
+                <button
+                  className="btn-ghost"
+                  onClick={() => navigate("/login")}
+                >
                   Connexion
                 </button>
-                <button className="btn-primary" onClick={() => navigate("/register")}>
+                <button
+                  className="btn-primary"
+                  onClick={() => navigate("/register")}
+                >
                   Inscription
                 </button>
               </>
@@ -199,7 +250,10 @@ const Navbar = () => {
           <div className="nav-notifications-dropdown">
             <div className="nav-notifications-header">
               <h3>Notifications</h3>
-              <button className="btn-close" onClick={() => setShowNotifications(false)}>
+              <button
+                className="btn-close"
+                onClick={() => setShowNotifications(false)}
+              >
                 ✕
               </button>
             </div>
@@ -219,9 +273,12 @@ const Navbar = () => {
         )}
       </nav>
 
-      {/* MOBILE NAV */}
+      {/* MOBILE NAV (on garde ta logique, juste stylé dans le CSS) */}
       {isMobile && (
-        <div className="mobile-nav-overlay" onClick={() => setShowNotifications(false)}>
+        <div
+          className="mobile-nav-overlay"
+          onClick={() => setShowNotifications(false)}
+        >
           <div className="mobile-nav" onClick={(e) => e.stopPropagation()}>
             <div className="mobile-nav-header">
               <div className="mobile-nav-user">
@@ -236,7 +293,10 @@ const Navbar = () => {
                 </div>
               </div>
 
-              <button className="mobile-nav-close" onClick={() => setShowNotifications(false)}>
+              <button
+                className="mobile-nav-close"
+                onClick={() => setShowNotifications(false)}
+              >
                 ✕
               </button>
             </div>
@@ -259,7 +319,9 @@ const Navbar = () => {
                   <Link
                     key={link.path}
                     to={link.path}
-                    className={`mobile-nav-link ${isActivePath(link.path) ? "active" : ""}`}
+                    className={`mobile-nav-link ${
+                      isActivePath(link.path) ? "active" : ""
+                    }`}
                   >
                     <span className="mobile-nav-icon">{link.icon}</span>
                     {link.label}
@@ -267,7 +329,10 @@ const Navbar = () => {
                 ))}
 
               {user && (
-                <button className="mobile-nav-logout" onClick={handleLogout}>
+                <button
+                  className="mobile-nav-logout"
+                  onClick={handleLogout}
+                >
                   <span className="mobile-nav-icon">🚪</span>
                   Déconnexion
                 </button>
