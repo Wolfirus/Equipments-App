@@ -1,37 +1,55 @@
 import React, { useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import client from "../api/client";
 import { useAuth } from "../context/AuthContext";
+import CenterAlert from "../components/CenterAlert";
 
 const Login = () => {
   const { login } = useAuth();
   const navigate = useNavigate();
-  const location = useLocation();
-  const from = location.state?.from?.pathname || "/";
 
   const [form, setForm] = useState({ email: "", password: "" });
-  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [alert, setAlert] = useState(null);
 
-  const handleChange = (e) =>
+  const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError("");
     setLoading(true);
+
     try {
       const res = await client.post("/auth/login", form);
       const { token, user } = res.data;
+
+      // save user + token
       login(user, token);
 
-      if (user.role === "admin") navigate("/admin", { replace: true });
-      else if (user.role === "supervisor")
-        navigate("/supervisor", { replace: true });
-      else navigate("/user", { replace: true });
+      // success message
+      setAlert({
+        message: "Connexion réussie ✅",
+        type: "success",
+      });
+
+      // redirect by role ONLY
+      setTimeout(() => {
+        if (user.role === "admin") {
+          navigate("/admin", { replace: true });
+        } else if (user.role === "supervisor") {
+          navigate("/supervisor", { replace: true });
+        } else {
+          navigate("/user", { replace: true });
+        }
+      }, 1200);
+
     } catch (err) {
       console.error(err);
-      setError(err.response?.data?.message || "Erreur de connexion");
+      setAlert({
+        message: err.response?.data?.message || "Erreur de connexion",
+        type: "error",
+      });
     } finally {
       setLoading(false);
     }
@@ -44,8 +62,6 @@ const Login = () => {
         <p className="auth-subtitle">
           Accédez à votre espace en utilisant vos identifiants.
         </p>
-
-        {error && <div className="auth-error">{error}</div>}
 
         <form className="auth-form" onSubmit={handleSubmit}>
           <label>Email</label>
@@ -80,6 +96,14 @@ const Login = () => {
           </Link>
         </p>
       </div>
+
+      {alert && (
+        <CenterAlert
+          message={alert.message}
+          type={alert.type}
+          onClose={() => setAlert(null)}
+        />
+      )}
     </div>
   );
 };
