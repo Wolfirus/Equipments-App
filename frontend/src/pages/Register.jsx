@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import client from "../api/client";
 import { useAuth } from "../context/AuthContext";
+import CenterAlert from "../components/CenterAlert";
 
 const Register = () => {
   const { login } = useAuth();
@@ -13,28 +14,41 @@ const Register = () => {
     password: "",
     role: "user",
   });
-  const [error, setError] = useState("");
+
   const [loading, setLoading] = useState(false);
+  const [alert, setAlert] = useState(null);
 
   const handleChange = (e) =>
-    setForm({ ...form, [e.target.name]: e.target.value });
+    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError("");
     setLoading(true);
+
     try {
       const res = await client.post("/auth/register", form);
       const { token, user } = res.data;
+
+      // auto-login après inscription
       login(user, token);
 
-      if (user.role === "admin") navigate("/admin", { replace: true });
-      else if (user.role === "supervisor")
-        navigate("/supervisor", { replace: true });
-      else navigate("/user", { replace: true });
+      setAlert({
+        message: "Compte créé avec succès 🎉",
+        type: "success",
+      });
+
+      setTimeout(() => {
+        if (user.role === "admin") navigate("/admin", { replace: true });
+        else if (user.role === "supervisor")
+          navigate("/supervisor", { replace: true });
+        else navigate("/user", { replace: true });
+      }, 1500);
     } catch (err) {
       console.error(err);
-      setError(err.response?.data?.message || "Erreur à la création du compte");
+      setAlert({
+        message: err.response?.data?.message || "Erreur lors de l'inscription",
+        type: "error",
+      });
     } finally {
       setLoading(false);
     }
@@ -43,15 +57,13 @@ const Register = () => {
   return (
     <div className="auth-root">
       <div className="auth-card">
-        <h1>Inscription</h1>
+        <h1>Créer un compte</h1>
         <p className="auth-subtitle">
-          Créez un compte et choisissez votre rôle dans la plateforme.
+          Inscrivez-vous pour accéder à la plateforme.
         </p>
 
-        {error && <div className="auth-error">{error}</div>}
-
         <form className="auth-form" onSubmit={handleSubmit}>
-          <label>Nom complet</label>
+          <label>Nom</label>
           <input
             type="text"
             name="name"
@@ -79,20 +91,17 @@ const Register = () => {
             value={form.password}
             onChange={handleChange}
             required
+            minLength={6}
           />
 
           <label>Rôle</label>
-          <select
-            name="role"
-            value={form.role}
-            onChange={handleChange}
-          >
+          <select name="role" value={form.role} onChange={handleChange}>
             <option value="user">Utilisateur</option>
             <option value="supervisor">Superviseur</option>
           </select>
 
           <button type="submit" disabled={loading} className="auth-btn">
-            {loading ? "Création..." : "Créer le compte"}
+            {loading ? "Création..." : "Créer un compte"}
           </button>
         </form>
 
@@ -103,6 +112,14 @@ const Register = () => {
           </Link>
         </p>
       </div>
+
+      {alert && (
+        <CenterAlert
+          message={alert.message}
+          type={alert.type}
+          onClose={() => setAlert(null)}
+        />
+      )}
     </div>
   );
 };

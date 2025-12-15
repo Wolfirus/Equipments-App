@@ -1,12 +1,16 @@
 import React, { useState } from "react";
 import axios from "axios";
+import CenterAlert from "../components/CenterAlert";
 
 export default function Contact() {
   const [form, setForm] = useState({
     name: "",
     email: "",
-    message: ""
+    message: "",
   });
+
+  const [loading, setLoading] = useState(false);
+  const [alert, setAlert] = useState(null);
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -14,13 +18,25 @@ export default function Contact() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setLoading(true);
 
     try {
       await axios.post("http://localhost:5000/api/messages", form);
-      alert("Votre message a été envoyé !");
+
+      setAlert({
+        message: "Votre message a été envoyé avec succès 📩",
+        type: "success",
+      });
+
+      setForm({ name: "", email: "", message: "" });
     } catch (error) {
-      console.log(error);
-      alert("Erreur !");
+      console.error(error);
+      setAlert({
+        message: "Erreur lors de l’envoi du message",
+        type: "error",
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -34,19 +50,21 @@ export default function Contact() {
         </p>
 
         <form className="contact-form" onSubmit={handleSubmit}>
-          <input 
+          <input
             type="text"
             name="name"
             placeholder="Votre nom"
             required
+            value={form.name}
             onChange={handleChange}
           />
 
-          <input 
+          <input
             type="email"
             name="email"
             placeholder="Votre email"
             required
+            value={form.email}
             onChange={handleChange}
           />
 
@@ -55,15 +73,27 @@ export default function Contact() {
             placeholder="Votre message"
             rows="5"
             required
-            onChange={handleChange}
             value={form.message}
+            onChange={handleChange}
           />
 
-          <button type="submit" className="btn-submit">
-            Envoyer
+          <button
+            type="submit"
+            className="btn-submit"
+            disabled={loading}
+          >
+            {loading ? "Envoi..." : "Envoyer"}
           </button>
         </form>
       </div>
+
+      {alert && (
+        <CenterAlert
+          message={alert.message}
+          type={alert.type}
+          onClose={() => setAlert(null)}
+        />
+      )}
     </div>
   );
 }
