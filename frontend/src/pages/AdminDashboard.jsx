@@ -2,8 +2,8 @@ import React, { useEffect, useState } from "react";
 import client from "../api/client";
 import { useAuth } from "../context/AuthContext";
 
-const AdminDashboard = () => {
-  const { user, token } = useAuth();
+export default function AdminDashboard() {
+  const { user } = useAuth();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState(null);
@@ -15,14 +15,9 @@ const AdminDashboard = () => {
     const fetchUsers = async () => {
       try {
         setError("");
-        const res = await client.get("/users", {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
+        const res = await client.get("/users");
         setUsers(res.data);
       } catch (err) {
-        console.error("Erreur chargement utilisateurs :", err);
         setError("Impossible de charger les utilisateurs.");
       } finally {
         setLoading(false);
@@ -30,10 +25,14 @@ const AdminDashboard = () => {
     };
 
     fetchUsers();
-  }, [token]);
+  }, []);
 
   if (!user || user.role !== "admin") {
-    return <p className="center-text">Accès administrateur requis.</p>;
+    return (
+      <div className="bg-white shadow-xl rounded-2xl p-6">
+        <div className="font-semibold text-slate-900">Accès administrateur requis.</div>
+      </div>
+    );
   }
 
   const startEdit = (u) => {
@@ -46,39 +45,16 @@ const AdminDashboard = () => {
     setEditForm({ name: "", email: "" });
   };
 
-  const handleEditChange = (field, value) => {
-    setEditForm((prev) => ({ ...prev, [field]: value }));
-  };
-
   const handleSaveEdit = async (id) => {
-    if (!window.confirm("Confirmer la mise à jour de cet utilisateur ?")) {
-      return;
-    }
+    if (!window.confirm("Confirmer la mise à jour de cet utilisateur ?")) return;
 
     try {
       setSavingId(id);
-      const res = await client.patch(
-        `/users/${id}`,
-        {
-          name: editForm.name,
-          email: editForm.email,
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      setUsers((prev) =>
-        prev.map((u) => (u._id === id ? { ...u, ...res.data } : u))
-      );
+      const res = await client.patch(`/users/${id}`, { name: editForm.name, email: editForm.email });
+      setUsers((prev) => prev.map((u) => (u._id === id ? { ...u, ...res.data } : u)));
       cancelEdit();
     } catch (err) {
-      console.error("Erreur mise à jour utilisateur :", err);
-      alert(
-        err.response?.data?.message || "Erreur lors de la mise à jour de l'utilisateur."
-      );
+      alert(err.response?.data?.message || "Erreur lors de la mise à jour.");
     } finally {
       setSavingId(null);
     }
@@ -87,21 +63,9 @@ const AdminDashboard = () => {
   const handleRoleChange = async (id, newRole) => {
     try {
       setSavingId(id);
-      const res = await client.patch(
-        `/users/${id}/role`,
-        { role: newRole },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      setUsers((prev) =>
-        prev.map((u) => (u._id === id ? { ...u, role: res.data.role } : u))
-      );
-    } catch (err) {
-      console.error("Erreur changement rôle :", err);
+      const res = await client.patch(`/users/${id}/role`, { role: newRole });
+      setUsers((prev) => prev.map((u) => (u._id === id ? { ...u, role: res.data.role } : u)));
+    } catch {
       alert("Erreur lors du changement de rôle.");
     } finally {
       setSavingId(null);
@@ -109,149 +73,139 @@ const AdminDashboard = () => {
   };
 
   const handleDeleteUser = async (id) => {
-    const confirm = window.confirm(
-      "Voulez-vous vraiment supprimer cet utilisateur ?"
-    );
-    if (!confirm) return;
+    if (!window.confirm("Voulez-vous vraiment supprimer cet utilisateur ?")) return;
 
     try {
       setSavingId(id);
-      await client.delete(`/users/${id}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
+      await client.delete(`/users/${id}`);
       setUsers((prev) => prev.filter((u) => u._id !== id));
-    } catch (err) {
-      console.error("Erreur suppression utilisateur :", err);
-      alert("Erreur lors de la suppression de l'utilisateur.");
+    } catch {
+      alert("Erreur lors de la suppression.");
     } finally {
       setSavingId(null);
     }
   };
 
   return (
-    <div className="dashboard-container">
-      <h1 className="title">Dashboard Administrateur</h1>
-      <p className="subtitle">
-        Bienvenue, {user.name}. Gérez les comptes utilisateurs de la plateforme.
-      </p>
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-semibold text-slate-900">Dashboard Administrateur</h1>
+        <p className="text-sm text-slate-600 mt-1">Bienvenue, {user.name}. Gérez les utilisateurs.</p>
+      </div>
 
-      {error && <div className="auth-error">{error}</div>}
-
-      {loading ? (
-        <p className="center-text">Chargement...</p>
-      ) : (
-        <div className="glass-card admin-card">
-          <h2>Utilisateurs</h2>
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Nom</th>
-                <th>Email</th>
-                <th>Rôle</th>
-                <th style={{ textAlign: "right" }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {users.map((u) => {
-                const isEditing = editingId === u._id;
-
-                return (
-                  <tr key={u._id}>
-                    <td>
-                      {isEditing ? (
-                        <input
-                          className="input-inline"
-                          value={editForm.name}
-                          onChange={(e) =>
-                            handleEditChange("name", e.target.value)
-                          }
-                        />
-                      ) : (
-                        u.name
-                      )}
-                    </td>
-                    <td>
-                      {isEditing ? (
-                        <input
-                          className="input-inline"
-                          value={editForm.email}
-                          onChange={(e) =>
-                            handleEditChange("email", e.target.value)
-                          }
-                        />
-                      ) : (
-                        u.email
-                      )}
-                    </td>
-                    <td>
-                      <select
-                        className="role-select"
-                        value={u.role}
-                        disabled={savingId === u._id}
-                        onChange={(e) =>
-                          handleRoleChange(u._id, e.target.value)
-                        }
-                      >
-                        <option value="user">Utilisateur</option>
-                        <option value="supervisor">Superviseur</option>
-                        <option value="admin">Administrateur</option>
-                      </select>
-                    </td>
-                    <td style={{ textAlign: "right" }}>
-                      {isEditing ? (
-                        <>
-                          <button
-                            className="btn-secondary btn-small"
-                            disabled={savingId === u._id}
-                            onClick={cancelEdit}
-                          >
-                            Annuler
-                          </button>
-                          <button
-                            className="btn-purple btn-small"
-                            disabled={savingId === u._id}
-                            onClick={() => handleSaveEdit(u._id)}
-                          >
-                            Enregistrer
-                          </button>
-                        </>
-                      ) : (
-                        <>
-                          <button
-                            className="btn-secondary btn-small"
-                            onClick={() => startEdit(u)}
-                          >
-                            Modifier
-                          </button>
-
-                          {u._id === user.id || u.email === user.email ? (
-                            <span className="badge-disabled">
-                              Mon compte
-                            </span>
-                          ) : (
-                            <button
-                              className="btn-danger btn-small"
-                              disabled={savingId === u._id}
-                              onClick={() => handleDeleteUser(u._id)}
-                            >
-                              Supprimer
-                            </button>
-                          )}
-                        </>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+      {error && (
+        <div className="bg-red-50 text-red-700 border border-red-200 rounded-xl px-4 py-3 text-sm">
+          {error}
         </div>
       )}
+
+      <div className="bg-white shadow-xl rounded-2xl overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+          <div className="font-semibold text-slate-900">Utilisateurs</div>
+          <div className="text-xs text-slate-500">{users.length} utilisateur(s)</div>
+        </div>
+
+        {loading ? (
+          <div className="p-6 text-slate-600">Chargement...</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left font-semibold text-slate-700">Nom</th>
+                  <th className="px-6 py-3 text-left font-semibold text-slate-700">Email</th>
+                  <th className="px-6 py-3 text-left font-semibold text-slate-700">Rôle</th>
+                  <th className="px-6 py-3 text-right font-semibold text-slate-700">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {users.map((u) => {
+                  const isEditing = editingId === u._id;
+                  return (
+                    <tr key={u._id} className="border-t">
+                      <td className="px-6 py-4">
+                        {isEditing ? (
+                          <input
+                            className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none"
+                            value={editForm.name}
+                            onChange={(e) => setEditForm((p) => ({ ...p, name: e.target.value }))}
+                          />
+                        ) : (
+                          <span className="font-medium text-slate-900">{u.name}</span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4">
+                        {isEditing ? (
+                          <input
+                            className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none"
+                            value={editForm.email}
+                            onChange={(e) => setEditForm((p) => ({ ...p, email: e.target.value }))}
+                          />
+                        ) : (
+                          <span className="text-slate-600">{u.email}</span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4">
+                        <select
+                          className="rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none"
+                          value={u.role}
+                          disabled={savingId === u._id}
+                          onChange={(e) => handleRoleChange(u._id, e.target.value)}
+                        >
+                          <option value="user">Utilisateur</option>
+                          <option value="supervisor">Superviseur</option>
+                          <option value="admin">Administrateur</option>
+                        </select>
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        {isEditing ? (
+                          <div className="inline-flex gap-2">
+                            <button
+                              className="px-3 py-2 rounded-lg border border-gray-200 hover:bg-gray-50"
+                              onClick={cancelEdit}
+                              disabled={savingId === u._id}
+                            >
+                              Annuler
+                            </button>
+                            <button
+                              className="px-3 py-2 rounded-lg bg-slate-900 text-white hover:opacity-90"
+                              onClick={() => handleSaveEdit(u._id)}
+                              disabled={savingId === u._id}
+                            >
+                              Enregistrer
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="inline-flex gap-2">
+                            <button
+                              className="px-3 py-2 rounded-lg border border-gray-200 hover:bg-gray-50"
+                              onClick={() => startEdit(u)}
+                            >
+                              Modifier
+                            </button>
+
+                            {u.email === user.email ? (
+                              <span className="text-xs text-slate-500 px-3 py-2">Mon compte</span>
+                            ) : (
+                              <button
+                                className="px-3 py-2 rounded-lg bg-red-600 text-white hover:opacity-90"
+                                onClick={() => handleDeleteUser(u._id)}
+                                disabled={savingId === u._id}
+                              >
+                                Supprimer
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
     </div>
   );
-};
-
-export default AdminDashboard;
+}

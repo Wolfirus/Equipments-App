@@ -1,252 +1,189 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import { profileAPI } from '../services/api';
+import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
+import { profileAPI } from "../services/api";
 
-const ProfilePage = () => {
-  const { user, updateProfile, updatePreferences, changePassword, logout } = useAuth();
+export default function ProfilePage() {
+  const { user, updateProfile, changePassword, logout } = useAuth();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('personal');
+
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [success, setSuccess] = useState(null);
-  const [profileData, setProfileData] = useState({
-    phone: '',
-    department: 'General',
-    bio: '',
-    avatar_url: '',
-    preferences: {
-      notifications: {
-        email: true,
-        browser: true,
-        reservation_reminders: true,
-        equipment_available: true,
-        system_updates: false
-      },
-      language: 'en',
-      theme: 'auto'
-    }
+  const [err, setErr] = useState("");
+  const [ok, setOk] = useState("");
+
+  const [profile, setProfile] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    department: "General",
+    bio: "",
+    avatar_url: "",
   });
 
-  // Load profile data on component mount
+  const [pwd, setPwd] = useState({ current: "", next: "" });
+
   useEffect(() => {
-    if (user) {
-      fetchProfileData();
-    }
+    if (!user) return;
+
+    (async () => {
+      setLoading(true);
+      setErr("");
+      try {
+        const res = await profileAPI.getProfile();
+        const data = res?.data || res;
+
+        setProfile({
+          name: data?.name || user.name || "",
+          email: data?.email || user.email || "",
+          phone: data?.phone || "",
+          department: data?.department || "General",
+          bio: data?.bio || "",
+          avatar_url: data?.avatar_url || "",
+        });
+      } catch (e) {
+        setErr(e.message || "Erreur de chargement profil");
+      } finally {
+        setLoading(false);
+      }
+    })();
   }, [user]);
-
-  const fetchProfileData = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const response = await profileAPI.getProfile();
-      if (response.success) {
-        setProfileData(response.data);
-      } else {
-        setError(response.error);
-      }
-    } catch (error) {
-      setError('Failed to fetch profile data');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    const formData = new FormData(e.target);
-
-    try {
-      setLoading(true);
-      setError(null);
-      setSuccess(null);
-
-      const data = {
-        name: formData.get('name'),
-        phone: formData.get('phone'),
-        department: formData.get('department'),
-        bio: formData.get('bio'),
-        avatar_url: formData.get('avatar_url')
-      };
-
-      // Only update provided fields
-      const updateData = {};
-      if (data.name && data.name !== user?.name) updateData.name = data.name;
-      if (data.phone && data.phone !== profileData.phone) updateData.phone = data.phone;
-      if (data.department && data.department !== profileData.department) updateData.department = data.department;
-      if (data.bio && data.bio !== profileData.bio) updateData.bio = data.bio;
-      if (data.avatar_url && data.avatar_url !== profileData.avatar_url) updateData.avatar_url = data.avatar_url;
-
-      const response = await updateProfile(updateData);
-      if (response.success) {
-        setSuccess('Profile updated successfully!');
-        setProfileData(prev => ({ ...prev, ...response.data }));
-        setError(null);
-      } else {
-        setError(response.error || 'Failed to update profile');
-      }
-    } catch (error) {
-      setError('Network error. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handlePreferencesSubmit = async (e) => {
-    e.preventDefault();
-    const formData = new FormData(e.target);
-
-    try {
-      setLoading(true);
-      setError(null);
-
-      const data = {
-        notifications: {
-          email: formData.get('email_notifications') === 'true',
-          browser: formData.get('browser_notifications') === 'true',
-          reservation_reminders: formData.get('reservation_reminders') === 'true',
-          equipment_available: formData.get('equipment_available') === 'true',
-          system_updates: formData.get('system_updates') === 'true'
-        },
-        language: formData.get('language'),
-        theme: formData.get('theme')
-      };
-
-      const response = await updatePreferences(data);
-      if (response.success) {
-        setSuccess('Preferences updated successfully!');
-        setProfileData(prev => ({ ...prev, preferences: { ...prev.preferences, ...response.data } }));
-        setError(null);
-      } else {
-        setError(response.error || 'Failed to update preferences');
-      }
-    } catch (error) {
-      setError('Network error. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handlePasswordChange = async (e) => {
-    e.preventDefault();
-    const formData = new FormData(e.target);
-
-    try {
-      setLoading(true);
-      setError(null);
-
-      const data = {
-        current_password: formData.get('current_password'),
-        new_password: formData.get('new_password'),
-        confirm_password: formData.get('confirm_password')
-      };
-
-      const response = await changePassword(data.current_password, data.new_password);
-      if (response.success) {
-        setSuccess('Password changed successfully!');
-        setError(null);
-      } else {
-        setError(response.error || 'Failed to change password');
-      }
-    } catch (error) {
-      setError('Network error. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleDeleteAccount = async () => {
-    if (!window.confirm('Êtes-vous sûr de vouloir supprimer votre compte ? Cette action est irréversible.')) {
-      return;
-    }
-    try {
-      const response = await profileAPI.deleteAccount('DELETE_MY_ACCOUNT');
-      if (response.success) {
-        setSuccess('Account deleted successfully');
-        logout();
-        navigate('/');
-      } else {
-        setError(response.error || 'Failed to delete account');
-      }
-    } catch (error) {
-      setError('Network error. Please try again.');
-    }
-  };
 
   if (!user) {
     return (
-      <div className="center-page">
-        <div className="glass-card">
-          <h1>Authentication requise</h1>
-          <p>Veuillez vous connecter pour accéder à votre profil.</p>
-          <button onClick={() => navigate('/login')} className="btn-primary">Se connecter</button>
+      <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
+        <div className="font-semibold text-slate-900">
+          Authentication requise
         </div>
+        <button
+          className="mt-4 px-4 py-2 rounded-lg bg-slate-900 text-white hover:opacity-90 text-sm"
+          onClick={() => navigate("/login")}
+        >
+          Se connecter
+        </button>
       </div>
     );
   }
 
+  const saveProfile = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setErr("");
+    setOk("");
+
+    try {
+      const payload = {
+        name: profile.name,
+        phone: profile.phone,
+        department: profile.department,
+        bio: profile.bio,
+        avatar_url: profile.avatar_url,
+      };
+
+      const r = await updateProfile(payload);
+      if (!r?.success) throw new Error(r?.error || "Erreur update");
+      setOk("Profil mis à jour ✅");
+    } catch (e2) {
+      setErr(e2.message || "Erreur update");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const savePassword = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setErr("");
+    setOk("");
+
+    try {
+      const r = await changePassword(pwd.current, pwd.next);
+      if (!r?.success) throw new Error(r?.error || "Erreur mot de passe");
+      setOk("Mot de passe changé ✅");
+      setPwd({ current: "", next: "" });
+    } catch (e2) {
+      setErr(e2.message || "Erreur mot de passe");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
-    <div className="center-page">
-      <div className="glass-card">
-        <h1>Profil</h1>
-
-        {error && (
-          <div className="auth-error">{error}</div>
-        )}
-
-        {success && (
-          <div className="auth-success">{success}</div>
-        )}
-
-        {/* Tab Navigation */}
-        <div className="profile-tabs">
-          <button
-            className={`tab-button ${activeTab === 'personal' ? 'active' : ''}`}
-            onClick={() => setActiveTab('personal')}
-          >
-            Informations personnelles
-          </button>
-
-          {user.role === 'admin' && (
-            <button
-              className={`tab-button ${activeTab === 'security' ? 'active' : ''}`}
-              onClick={() => setActiveTab('security')}
-            >
-              Sécurité
-            </button>
-          )}
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold text-slate-900">Profil</h1>
+          <p className="text-sm text-slate-600">Gérez vos informations.</p>
         </div>
+        <button
+          className="px-4 py-2 rounded-lg bg-white border border-gray-200 hover:bg-gray-50 text-sm"
+          onClick={() => {
+            logout();
+            navigate("/");
+          }}
+        >
+          Déconnexion
+        </button>
+      </div>
 
-        {/* Personal Information Form */}
-        {activeTab === 'personal' && (
-          <form className="profile-form" onSubmit={handleSubmit}>
-            <div className="form-group">
-              <label>Nom</label>
+      {err && (
+        <div className="bg-red-50 text-red-700 border border-red-200 rounded-xl px-4 py-3 text-sm">
+          {err}
+        </div>
+      )}
+      {ok && (
+        <div className="bg-green-50 text-green-700 border border-green-200 rounded-xl px-4 py-3 text-sm">
+          {ok}
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+        <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
+          <div className="font-semibold text-slate-900">Informations</div>
+
+          <form className="mt-4 space-y-4" onSubmit={saveProfile}>
+            <div>
+              <label className="text-xs font-semibold text-slate-700">Nom</label>
               <input
-                type="text"
-                name="name"
-                defaultValue={profileData.name}
-                required
+                className="mt-1 w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none"
+                value={profile.name}
+                onChange={(e) =>
+                  setProfile((p) => ({ ...p, name: e.target.value }))
+                }
               />
             </div>
 
-            <div className="form-group">
-              <label>Email</label>
+            <div>
+              <label className="text-xs font-semibold text-slate-700">Email</label>
               <input
-                type="email"
-                name="email"
-                defaultValue={profileData.email || ''}
-                required
+                className="mt-1 w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none bg-gray-50"
+                value={profile.email}
                 disabled
               />
             </div>
 
-            <div className="form-group">
-              <label>Département</label>
+            <div>
+              <label className="text-xs font-semibold text-slate-700">
+                Téléphone
+              </label>
+              <input
+                className="mt-1 w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none"
+                value={profile.phone}
+                onChange={(e) =>
+                  setProfile((p) => ({ ...p, phone: e.target.value }))
+                }
+              />
+            </div>
+
+            <div>
+              <label className="text-xs font-semibold text-slate-700">
+                Département
+              </label>
               <select
-                name="department"
-                value={profileData.department}
-                required
+                className="mt-1 w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none"
+                value={profile.department}
+                onChange={(e) =>
+                  setProfile((p) => ({ ...p, department: e.target.value }))
+                }
               >
                 <option value="General">Général</option>
                 <option value="IT">IT</option>
@@ -262,204 +199,88 @@ const ProfilePage = () => {
               </select>
             </div>
 
-            <div className="form-group">
-              <label>Téléphone</label>
-              <input
-                type="tel"
-                name="phone"
-                defaultValue={profileData.phone || ''}
-                required
-              />
-            </div>
-
-            <div className="form-group full-width">
-              <label>Biographie</label>
+            <div>
+              <label className="text-xs font-semibold text-slate-700">
+                Biographie
+              </label>
               <textarea
-                name="bio"
-                defaultValue={profileData.bio || ''}
-                rows="4"
-                maxLength={500}
+                className="mt-1 w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none"
+                rows={4}
+                value={profile.bio}
+                onChange={(e) =>
+                  setProfile((p) => ({ ...p, bio: e.target.value }))
+                }
               />
             </div>
 
-            <div className="form-group full-width">
-              <label>URL de l'avatar</label>
+            <div>
+              <label className="text-xs font-semibold text-slate-700">
+                Avatar URL
+              </label>
               <input
-                type="url"
-                name="avatar_url"
-                defaultValue={profileData.avatar_url || ''}
-                placeholder="https://example.com/avatar.jpg"
+                className="mt-1 w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none"
+                value={profile.avatar_url}
+                onChange={(e) =>
+                  setProfile((p) => ({ ...p, avatar_url: e.target.value }))
+                }
               />
             </div>
-
-            <div className="form-actions">
-              <button type="submit" className="btn-primary" disabled={loading}>
-                {loading ? 'Sauvegarde...' : 'Mettre à jour'}
-              </button>
-            </div>
-          </form>
-        )}
-
-        {/* Security Settings */}
-        {activeTab === 'security' && user.role === 'admin' && (
-          <form className="profile-form" onSubmit={handlePreferencesSubmit}>
-            <h3>Préférences de notification</h3>
-
-            <div className="form-group">
-              <label>
-                <input
-                  type="checkbox"
-                  name="email_notifications"
-                  defaultChecked={profileData.preferences.notifications.email}
-                  disabled
-                />
-                Notifications par email
-              </label>
-            </div>
-
-            <div className="form-group">
-              <label>
-                <input
-                  type="checkbox"
-                  name="browser_notifications"
-                  defaultChecked={profileData.preferences.notifications.browser}
-                  disabled
-                />
-                Notifications navigateur
-              </label>
-            </div>
-
-            <div className="form-group">
-              <label>
-                <input
-                  type="checkbox"
-                  name="reservation_reminders"
-                  defaultChecked={profileData.preferences.notifications.reservation_reminders}
-                  disabled
-                />
-                Rappels de réservation
-              </label>
-            </div>
-
-            <div className="form-group">
-              <label>
-                <input
-                  type="checkbox"
-                  name="equipment_available"
-                  defaultChecked={profileData.preferences.notifications.equipment_available}
-                  disabled
-                />
-                Disponibilité des équipements
-              </label>
-            </div>
-
-            <div className="form-group">
-              <label>
-                <input
-                  type="checkbox"
-                  name="system_updates"
-                  defaultChecked={profileData.preferences.notifications.system_updates}
-                  disabled
-                />
-                Mises à jour système
-              </label>
-            </div>
-
-            <div className="form-group">
-              <label>Langue</label>
-              <select
-                name="language"
-                value={profileData.preferences.language}
-                disabled
-                >
-                <option value="en">English</option>
-                <option value="fr">Français</option>
-              </select>
-            </div>
-
-            <div className="form-group">
-              <label>Thème</label>
-              <select
-                name="theme"
-                value={profileData.preferences.theme}
-                disabled
-                >
-                <option value="light">Clair</option>
-                <option value="dark">Sombre</option>
-                <option value="auto">Auto</option>
-              </select>
-            </div>
-
-            <div className="form-actions">
-              <button type="submit" className="btn-primary" disabled={loading}>
-                {loading ? 'Sauvegarde...' : 'Mettre à jour'}
-              </button>
-            </div>
-          </form>
-        )}
-
-        {/* Password Change */}
-        {activeTab === 'security' && (
-          <form className="profile-form" onSubmit={handlePasswordChange}>
-            <h3>Changer le mot de passe</h3>
-
-            <div className="form-group">
-              <label>Mot de passe actuel</label>
-              <input
-                type="password"
-                name="current_password"
-                required
-                />
-            </div>
-
-            <div className="form-group">
-              <label>Nouveau mot de passe</label>
-              <input
-                type="password"
-                name="new_password"
-                required
-                minLength={6}
-                />
-            </div>
-
-            <div className="form-group">
-              <label>Confirmer le nouveau mot de passe</label>
-              <input
-                type="password"
-                name="confirm_password"
-                required
-                minLength={6}
-                />
-            </div>
-
-            <div className="form-actions">
-              <button type="submit" className="btn-primary" disabled={loading}>
-                {loading ? 'Changement...' : 'Changer le mot de passe'}
-              </button>
-            </div>
-          </form>
-        )}
-
-        {/* Delete Account */}
-        {activeTab === 'security' && user.role !== 'admin' && (
-          <div className="danger-section">
-            <h3>Supprimer le compte</h3>
-            <p className="warning">
-              <strong>Attention:</strong> La suppression de votre compte est irréversible. Toutes vos réservations et données personnelles seront définitivement supprimées.
-            </p>
 
             <button
-              className="btn-danger"
-              onClick={handleDeleteAccount}
               disabled={loading}
+              className="w-full px-4 py-3 rounded-xl bg-slate-900 text-white hover:opacity-90 text-sm font-semibold disabled:opacity-60"
             >
-              {loading ? 'Suppression...' : 'Supprimer mon compte'}
+              {loading ? "Sauvegarde..." : "Mettre à jour"}
             </button>
-          </div>
-        )}
-      </div>        
-    </div>          
-  );
-};
+          </form>
+        </div>
 
-export default ProfilePage;
+        <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
+          <div className="font-semibold text-slate-900">Sécurité</div>
+
+          <form className="mt-4 space-y-4" onSubmit={savePassword}>
+            <div>
+              <label className="text-xs font-semibold text-slate-700">
+                Mot de passe actuel
+              </label>
+              <input
+                className="mt-1 w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none"
+                type="password"
+                value={pwd.current}
+                onChange={(e) =>
+                  setPwd((p) => ({ ...p, current: e.target.value }))
+                }
+                required
+              />
+            </div>
+
+            <div>
+              <label className="text-xs font-semibold text-slate-700">
+                Nouveau mot de passe
+              </label>
+              <input
+                className="mt-1 w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none"
+                type="password"
+                value={pwd.next}
+                onChange={(e) =>
+                  setPwd((p) => ({ ...p, next: e.target.value }))
+                }
+                required
+                minLength={6}
+              />
+            </div>
+
+            <button
+              disabled={loading}
+              className="w-full px-4 py-3 rounded-xl bg-slate-900 text-white hover:opacity-90 text-sm font-semibold disabled:opacity-60"
+            >
+              {loading ? "Changement..." : "Changer le mot de passe"}
+            </button>
+          </form>
+        </div>
+      </div>
+
+      {loading && <div className="text-sm text-slate-500">Chargement...</div>}
+    </div>
+  );
+}

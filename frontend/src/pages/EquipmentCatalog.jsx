@@ -1,410 +1,234 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate, useParams, useLocation } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import { equipmentAPI } from '../services/api';
-import EquipmentCard from '../components/EquipmentCard';
+import React, { useEffect, useMemo, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { equipmentAPI } from "../services/api";
+import EquipmentCard from "../components/EquipmentCard";
 
-const EquipmentCatalog = () => {
-  const { user } = useAuth();
+export default function EquipmentCatalog() {
   const navigate = useNavigate();
   const { id } = useParams();
-  const location = useLocation();
 
-  // State for equipment, filters, and loading
-  const [equipment, setEquipment] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('');
-  const [selectedStatus, setSelectedStatus] = useState('');
-  const [selectedAvailability, setSelectedAvailability] = useState(false);
-  const [sortBy, setSortBy] = useState('name');
-  const [sortOrder, setSortOrder] = useState('asc');
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
+  const [items, setItems] = useState([]);
   const [categories, setCategories] = useState([]);
-  const [showFilters, setShowFilters] = useState(false);
 
-  // Check if viewing single equipment
-  const isSingleView = !!id;
+  const [search, setSearch] = useState("");
+  const [category, setCategory] = useState("");
+  const [status, setStatus] = useState("");
+  const [availableOnly, setAvailableOnly] = useState(false);
 
-  // Filter params from URL
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState("");
+
+  const isSingle = Boolean(id);
+
   useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    setSearchTerm(params.get('search') || '');
-    setSelectedCategory(params.get('category') || '');
-    setSelectedStatus(params.get('status') || '');
-    setSelectedAvailability(params.get('available') === 'true');
-    setSortBy(params.get('sort') || 'name');
-    setSortOrder(params.get('order') || 'asc');
-    setCurrentPage(parseInt(params.get('page')) || 1);
-  }, [location.search]);
-
-  // Fetch categories on component mount
-  useEffect(() => {
-    fetchCategories();
+    (async () => {
+      try {
+        const cats = await equipmentAPI.getCategories();
+        const list = cats?.data?.categories || cats?.categories || cats?.data || [];
+        setCategories(Array.isArray(list) ? list : []);
+      } catch {
+        // ignore categories failure
+      }
+    })();
   }, []);
 
-  // Fetch equipment when filters change
-  useEffect(() => {
-    if (!isSingleView) {
-      fetchEquipment();
-    } else {
-      fetchSingleEquipment();
-    }
-  }, [searchTerm, selectedCategory, selectedStatus, selectedAvailability, sortBy, sortOrder, currentPage, isSingleView]);
-
-  const fetchCategories = async () => {
-    try {
-      const response = await equipmentAPI.getCategories();
-      if (response.success) {
-        setCategories(response.data.categories);
-      }
-    } catch (error) {
-      console.error('Failed to fetch categories:', error);
-    }
-  };
-
-  const fetchEquipment = async () => {
+  async function load() {
     setLoading(true);
-    setError(null);
+    setErr("");
 
     try {
-      const params = {
-        search: searchTerm,
-        category: selectedCategory,
-        status: selectedStatus,
-        available: selectedAvailability,
-        sort: sortBy,
-        order: sortOrder,
-        page: currentPage,
-        limit: 12
-      };
-
-      const response = await equipmentAPI.getEquipment(params);
-      if (response.success) {
-        setEquipment(response.data.equipment);
-        setTotalPages(response.data.pagination.pages);
+      if (isSingle) {
+        const one = await equipmentAPI.getEquipmentById(id);
+        const data = one?.data?.data || one?.data || one;
+        setItems(data ? [data] : []);
       } else {
-        setError('Failed to fetch equipment');
+        const res = await equipmentAPI.getEquipment({
+          search,
+          category,
+          status,
+          available: availableOnly ? true : undefined,
+          page: 1,
+          limit: 24,
+        });
+
+        const list = res?.data?.equipment || res?.equipment || res?.data || [];
+        setItems(Array.isArray(list) ? list : []);
       }
-    } catch (error) {
-      setError('Network error. Please try again.');
+    } catch (e) {
+      setErr(e.message || "Erreur");
     } finally {
       setLoading(false);
     }
-  };
-
-  const fetchSingleEquipment = async () => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const response = await equipmentAPI.getEquipmentById(id);
-      if (response.success) {
-        setEquipment([response.data.data]);
-      } else {
-        setError('Equipment not found');
-      }
-    } catch (error) {
-      setError('Network error. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSearch = (e) => {
-    const value = e.target.value;
-    setSearchTerm(value);
-    setCurrentPage(1);
-    updateURL();
-  };
-
-  const handleCategoryChange = (category) => {
-    setSelectedCategory(category);
-    setCurrentPage(1);
-    updateURL();
-  };
-
-  const handleStatusChange = (status) => {
-    setSelectedStatus(status);
-    setCurrentPage(1);
-    updateURL();
-  };
-
-  const handleAvailabilityChange = (available) => {
-    setSelectedAvailability(available);
-    setCurrentPage(1);
-    updateURL();
-  };
-
-  const handleSort = (newSortBy) => {
-    if (newSortBy === sortBy) {
-      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortBy(newSortBy);
-      setSortOrder('asc');
-    }
-    setCurrentPage(1);
-    updateURL();
-  };
-
-  const handlePageChange = (page) => {
-    setCurrentPage(page);
-    updateURL();
-  };
-
-  const handleReserve = (equipmentId) => {
-    // Navigate to reservation page with pre-filled equipment
-    navigate(`/reservations?equipment=${equipmentId}`);
-  };
-
-  const updateURL = () => {
-    const params = new URLSearchParams();
-
-    if (searchTerm) params.set('search', searchTerm);
-    if (selectedCategory) params.set('category', selectedCategory);
-    if (selectedStatus) params.set('status', selectedStatus);
-    if (selectedAvailability) params.set('available', 'true');
-    if (sortBy) params.set('sort', sortBy);
-    if (sortOrder) params.set('order', sortOrder);
-    if (currentPage > 1) params.set('page', currentPage);
-
-    const newURL = `${location.pathname}${params.toString()}`;
-    navigate(newURL, { replace: true });
-  };
-
-  const clearFilters = () => {
-    setSearchTerm('');
-    setSelectedCategory('');
-    setSelectedStatus('');
-    setSelectedAvailability(false);
-    setSortBy('name');
-    setSortOrder('asc');
-    setCurrentPage(1);
-    updateURL();
-  };
-
-  // Single equipment view
-  if (isSingleView) {
-    if (loading) {
-      return (
-        <div className="center-page">
-          <div className="glass-card">
-            <div className="loading-spinner">Chargement...</div>
-          </div>
-        </div>
-      );
-    }
-
-    if (error) {
-      return (
-        <div className="center-page">
-          <div className="glass-card">
-            <h2>Erreur</h2>
-            <p>{error}</p>
-            <button className="btn-primary" onClick={() => navigate('/equipment')}>
-              Retour à la liste
-            </button>
-          </div>
-        </div>
-      );
-    }
-
-    const equipmentItem = equipment[0];
-    if (!equipmentItem) {
-      return (
-        <div className="center-page">
-          <div className="glass-card">
-            <h2>Équipement non trouvé</h2>
-            <button className="btn-primary" onClick={() => navigate('/equipment')}>
-              Retour à la liste
-            </button>
-          </div>
-        </div>
-      );
-    }
-
-    return (
-      <div className="equipment-catalog">
-        <div className="catalog-header">
-          <h1>{equipmentItem.name}</h1>
-          <div className="catalog-actions">
-            <button className="btn-ghost" onClick={() => navigate('/equipment')}>
-              ← Retour
-            </button>
-          </div>
-        </div>
-
-        <EquipmentCard
-          equipment={equipmentItem}
-          onReserve={handleReserve}
-          compact={false}
-        />
-      </div>
-    );
   }
 
-  // Catalog view
+  useEffect(() => {
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, isSingle]);
+
+  const filtered = useMemo(() => {
+    if (isSingle) return items;
+
+    const s = search.trim().toLowerCase();
+    return items.filter((x) => {
+      const name = (x.name || "").toLowerCase();
+      const catName = x.category?.name || x.category || "";
+      const okSearch = !s || name.includes(s);
+      const okCat = !category || String(catName) === String(category);
+      const okStatus = !status || x.status === status;
+      const okAvail =
+        !availableOnly || x.available === true || x.status === "available";
+      return okSearch && okCat && okStatus && okAvail;
+    });
+  }, [items, search, category, status, availableOnly, isSingle]);
+
+  const handleReserve = (equipmentId) =>
+    navigate(`/reservations?equipment=${equipmentId}`);
+
+  const categoryOptions = useMemo(() => {
+    // supports categories as strings or objects like {_id, name}
+    return categories
+      .map((c) => {
+        if (typeof c === "string") return { value: c, label: c };
+        const label = c?.name || c?.label || c?._id;
+        const value = c?.name || c?._id;
+        return value ? { value, label: label || value } : null;
+      })
+      .filter(Boolean);
+  }, [categories]);
+
   return (
-    <div className="equipment-catalog">
-      <div className="catalog-header">
-        <div className="catalog-title">
-          <h1>Catalogue d'équipements</h1>
-          <p>Découvrez et réservez les équipements disponibles</p>
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold text-slate-900">
+            {isSingle ? "Détail équipement" : "Catalogue d'équipements"}
+          </h1>
+          <p className="text-sm text-slate-600">
+            {isSingle
+              ? "Consultez les informations de l’équipement."
+              : "Recherchez et réservez facilement."}
+          </p>
         </div>
 
-        <div className="catalog-filters">
+        {isSingle && (
           <button
-            className="btn-filter"
-            onClick={() => setShowFilters(!showFilters)}
+            className="px-4 py-2 rounded-lg bg-white border border-gray-200 hover:bg-gray-50 text-sm"
+            onClick={() => navigate("/equipment")}
           >
-            {showFilters ? 'Masquer les filtres' : 'Afficher les filtres'}
+            ← Retour
           </button>
+        )}
+      </div>
 
-          <div className={`filter-controls ${showFilters ? 'show' : ''}`}>
+      {!isSingle && (
+        <div className="bg-white shadow-sm rounded-2xl border border-gray-200 p-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
             <input
-              type="text"
+              className="rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none"
               placeholder="Rechercher..."
-              value={searchTerm}
-              onChange={handleSearch}
-              className="search-input"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
             />
 
             <select
-              value={selectedCategory}
-              onChange={(e) => handleCategoryChange(e.target.value)}
-              className="filter-select"
+              className="rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none"
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
             >
               <option value="">Toutes catégories</option>
-              {categories.map(category => (
-                <option key={category} value={category}>
-                  {category}
+              {categoryOptions.map((c) => (
+                <option key={c.value} value={c.value}>
+                  {c.label}
                 </option>
               ))}
             </select>
 
             <select
-              value={selectedStatus}
-              onChange={(e) => handleStatusChange(e.target.value)}
-              className="filter-select"
+              className="rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none"
+              value={status}
+              onChange={(e) => setStatus(e.target.value)}
             >
               <option value="">Tous statuts</option>
               <option value="available">Disponible</option>
               <option value="maintenance">Maintenance</option>
             </select>
 
-            <select
-              value={sortBy}
-              onChange={(e) => handleSort(e.target.value)}
-              className="filter-select"
-            >
-              <option value="name">Nom</option>
-              <option value="created_at">Date d'ajout</option>
-              <option value="total_quantity">Quantité</option>
-              <option value="utilization_rate">Utilisation</option>
-            </select>
-
             <button
-              onClick={() => {
-                setSelectedAvailability(!selectedAvailability);
-                setCurrentPage(1);
-                updateURL();
-              }}
-              className={`btn-toggle ${selectedAvailability ? 'active' : ''}`}
+              className={`rounded-xl px-4 py-3 text-sm border ${
+                availableOnly
+                  ? "bg-slate-900 text-white border-slate-900"
+                  : "bg-white border-gray-200 hover:bg-gray-50"
+              }`}
+              onClick={() => setAvailableOnly((v) => !v)}
             >
-              {selectedAvailability ? 'Disponible seulement' : 'Inclure indisponible'}
+              {availableOnly ? "Disponible seulement" : "Inclure indisponible"}
             </button>
+          </div>
 
-            {(searchTerm || selectedCategory || selectedStatus || selectedAvailability || sortBy !== 'name') && (
-              <button className="btn-ghost" onClick={clearFilters}>
-                Réinitialiser
-              </button>
-            )}
+          <div className="mt-3 flex gap-2">
+            <button
+              className="px-4 py-2 rounded-lg bg-slate-900 text-white text-sm hover:opacity-90"
+              onClick={load}
+            >
+              Appliquer
+            </button>
+            <button
+              className="px-4 py-2 rounded-lg bg-white border border-gray-200 hover:bg-gray-50 text-sm"
+              onClick={() => {
+                setSearch("");
+                setCategory("");
+                setStatus("");
+                setAvailableOnly(false);
+              }}
+            >
+              Reset
+            </button>
           </div>
         </div>
-      </div>
+      )}
+
+      {err && (
+        <div className="bg-red-50 text-red-700 border border-red-200 rounded-xl px-4 py-3 text-sm">
+          {err}
+        </div>
+      )}
 
       {loading ? (
-        <div className="catalog-loading">
-          <div className="loading-spinner">Chargement...</div>
-        </div>
-      ) : error ? (
-        <div className="catalog-error">
-          <div className="glass-card">
-            <h2>Erreur</h2>
-            <p>{error}</p>
-            <button className="btn-primary" onClick={() => {
-              setError(null);
-              fetchEquipment();
-            }}>
-              Réessayer
-            </button>
-          </div>
+        <div className="bg-white border border-gray-200 rounded-2xl p-6 text-slate-600">
+          Chargement...
         </div>
       ) : (
-        <div className="catalog-content">
-          {equipment.length === 0 ? (
-            <div className="empty-state">
-              <div className="glass-card">
-                <h2>Aucun équipement trouvé</h2>
-                <p>
-                  {searchTerm || selectedCategory || selectedStatus || selectedAvailability
-                    ? 'Aucun équipement ne correspond à vos critères.'
-                    : 'Aucun équipement disponible pour le moment.'}
-                </p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
+          {filtered.map((item) => (
+            <div
+              key={item._id}
+              className="bg-white border border-gray-200 rounded-2xl p-4 shadow-sm"
+            >
+              <EquipmentCard
+                equipment={item}
+                onReserve={handleReserve}
+                compact={!isSingle}
+              />
+
+              {!isSingle && (
                 <button
-                  className="btn-primary"
-                  onClick={() => {
-                    clearFilters();
-                    fetchEquipment();
-                  }}
+                  className="mt-3 w-full px-4 py-2 rounded-lg border border-gray-200 hover:bg-gray-50 text-sm"
+                  onClick={() => navigate(`/equipment/${item._id}`)}
                 >
-                  Réinitialiser
+                  Voir détails
                 </button>
-              </div>
+              )}
             </div>
-          ) : (
-            <div className="equipment-grid">
-              {equipment.map(item => (
-                <EquipmentCard
-                  key={item._id}
-                  equipment={item}
-                  onReserve={handleReserve}
-                  compact={true}
-                />
-              ))}
+          ))}
+
+          {!filtered.length && (
+            <div className="bg-white border border-gray-200 rounded-2xl p-6 text-slate-600">
+              Aucun équipement trouvé.
             </div>
           )}
         </div>
       )}
-
-      {/* Pagination */}
-      {totalPages > 1 && !loading && !error && (
-        <div className="catalog-pagination">
-          <button
-            className="btn-ghost"
-            onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
-            disabled={currentPage === 1}
-          >
-            ← Précédent
-          </button>
-
-          <span className="pagination-info">
-            Page {currentPage} sur {totalPages}
-          </span>
-
-          <button
-            className="btn-ghost"
-            onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
-            disabled={currentPage === totalPages}
-          >
-            Suivant →
-          </button>
-        </div>
-      )}
     </div>
   );
-};
-
-export default EquipmentCatalog;
+}

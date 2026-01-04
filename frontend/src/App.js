@@ -2,40 +2,75 @@ import React from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
 
-import Navbar from "./components/Navbar";
 import ProtectedRoute from "./components/ProtectedRoute";
+import DashboardLayout from "./layout/DashboardLayout";
 
-// Existing pages
+// pages
 import Home from "./pages/Home";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import AdminDashboard from "./pages/AdminDashboard";
-import SupervisorDashboard from "./pages/SupervisorDashboard";
-import UserDashboard from "./pages/UserDashboard";
+import AdminMessages from "./pages/AdminMessages";
+import EquipmentCatalog from "./pages/EquipmentCatalog";
+import ReservationManagement from "./pages/ReservationManagement";
+import ProfilePage from "./pages/ProfilePage";
 import Contact from "./pages/Contact";
 import About from "./pages/About";
-import AdminMessages from "./pages/AdminMessages";
+import SupervisorDashboard from "./pages/SupervisorDashboard";
+import UserDashboard from "./pages/UserDashboard";
 
+// admin management pages
+import AdminEquipments from "./pages/AdminEquipments";
+import AdminReservations from "./pages/AdminReservations";
 
-import "./index.css";
-
-function App() {
+export default function App() {
   return (
     <Router>
       <AuthProvider>
-        <div className="app-root">
-          <Navbar />
-
+        <DashboardLayout>
           <Routes>
+            {/* public */}
             <Route path="/" element={<Home />} />
             <Route path="/about" element={<About />} />
             <Route path="/contact" element={<Contact />} />
-
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
-            <Route path="/admin/messages" element={<AdminMessages />} />
 
+            {/* protected: user/supervisor/admin */}
+            <Route
+              path="/equipment"
+              element={
+                <ProtectedRoute roles={["user", "supervisor", "admin"]}>
+                  <EquipmentCatalog />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/equipment/:id"
+              element={
+                <ProtectedRoute roles={["user", "supervisor", "admin"]}>
+                  <EquipmentCatalog />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/reservations"
+              element={
+                <ProtectedRoute roles={["user", "supervisor", "admin"]}>
+                  <ReservationManagement />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/profile"
+              element={
+                <ProtectedRoute roles={["user", "supervisor", "admin"]}>
+                  <ProfilePage />
+                </ProtectedRoute>
+              }
+            />
 
+            {/* admin */}
             <Route
               path="/admin"
               element={
@@ -44,7 +79,32 @@ function App() {
                 </ProtectedRoute>
               }
             />
+            <Route
+              path="/admin/equipments"
+              element={
+                <ProtectedRoute roles={["admin"]}>
+                  <AdminEquipments />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/reservations"
+              element={
+                <ProtectedRoute roles={["admin"]}>
+                  <AdminReservations />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/messages"
+              element={
+                <ProtectedRoute roles={["admin"]}>
+                  <AdminMessages />
+                </ProtectedRoute>
+              }
+            />
 
+            {/* supervisor */}
             <Route
               path="/supervisor"
               element={
@@ -54,6 +114,7 @@ function App() {
               }
             />
 
+            {/* user */}
             <Route
               path="/user"
               element={
@@ -63,12 +124,11 @@ function App() {
               }
             />
 
+            {/* fallback */}
             <Route path="*" element={<Home />} />
           </Routes>
-        </div>
+        </DashboardLayout>
       </AuthProvider>
     </Router>
   );
 }
-
-export default App;

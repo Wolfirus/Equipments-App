@@ -1,528 +1,314 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import { reservationAPI, equipmentAPI } from '../services/api';
-import EquipmentCard from "../components/EquipmentCard";
+import React, { useEffect, useState } from "react";
+import { useNavigate, useSearchParams, useParams } from "react-router-dom";
+import { reservationAPI, equipmentAPI } from "../services/api";
 
-const ReservationManagement = () => {
-  const { user, token } = useAuth();
+export default function ReservationManagement() {
   const navigate = useNavigate();
-  const { id } = useParams();
+  const { id } = useParams(); // keep if you later create /reservations/:id
+  const [searchParams] = useSearchParams();
+  const prefillEquipment = searchParams.get("equipment") || "";
+
   const [reservations, setReservations] = useState([]);
+  const [equipment, setEquipment] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [view, setView] = useState('list'); // 'list', 'calendar', 'both'
-  const [selectedReservation, setSelectedReservation] = useState(null);
-  const [showCreateForm, setShowCreateForm] = useState(false);
-  const [filterStatus, setFilterStatus] = useState('');
-  const [filterCategory, setFilterCategory] = useState('');
-  const [filterDateRange, setFilterDateRange] = useState({ start: '', end: '' });
+  const [err, setErr] = useState("");
 
-  // Fetch reservations on component mount
+  const [open, setOpen] = useState(false);
+  const [form, setForm] = useState({
+    equipment_id: prefillEquipment,
+    start_date: "",
+    end_date: "",
+    quantity: 1,
+    purpose: "",
+    notes: "",
+  });
+
+  async function load() {
+    setLoading(true);
+    setErr("");
+    try {
+      const res = await reservationAPI.getReservations({ page: 1, limit: 50 });
+      const list = res?.data?.reservations || res?.reservations || res?.data || [];
+      setReservations(Array.isArray(list) ? list : []);
+
+      const eq = await equipmentAPI.getEquipment({ page: 1, limit: 200 });
+      const eqlist = eq?.data?.equipment || eq?.equipment || eq?.data || [];
+      setEquipment(Array.isArray(eqlist) ? eqlist : []);
+    } catch (e) {
+      setErr(e.message || "Erreur");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   useEffect(() => {
-    if (user && token) {
-      fetchReservations();
+    load();
+  }, []);
+
+  useEffect(() => {
+    if (prefillEquipment) {
+      setOpen(true);
+      setForm((p) => ({ ...p, equipment_id: prefillEquipment }));
     }
-  }, [user, token]);
+  }, [prefillEquipment]);
 
-  const fetchReservations = async (filters = {}) => {
+  async function create(e) {
+    e.preventDefault();
+    setLoading(true);
+    setErr("");
     try {
-      setLoading(true);
-      setError(null);
-
-      const params = {
-        ...filters,
-        status: filterStatus,
-        category: filterCategory,
-        page: 1,
-        limit: 20
-      };
-
-      const response = await reservationAPI.getReservations(params);
-
-      if (response.success) {
-        setReservations(response.data.reservations);
-      } else {
-        setError(response.error || 'Failed to fetch reservations');
-      }
-    } catch (error) {
-      setError('Network error. Please try again.');
+      await reservationAPI.createReservation(form);
+      setOpen(false);
+      setForm({
+        equipment_id: "",
+        start_date: "",
+        end_date: "",
+        quantity: 1,
+        purpose: "",
+        notes: "",
+      });
+      await load();
+      navigate("/reservations", { replace: true });
+    } catch (e2) {
+      setErr(e2.message || "Erreur création");
     } finally {
       setLoading(false);
     }
-  };
-
-  const fetchSingleReservation = async (reservationId) => {
-    try {
-      const response = await reservationAPI.getReservationById(reservationId);
-
-      if (response.success) {
-        setSelectedReservation(response.data);
-      } else {
-        setError('Reservation not found');
-      }
-    } catch (error) {
-      setError('Failed to fetch reservation details');
-    }
-  };
-
-  const createReservation = async (reservationData) => {
-    try {
-      setLoading(true);
-      const response = await reservationAPI.createReservation(reservationData);
-
-      if (response.success) {
-        // Fetch updated list
-        await fetchReservations();
-        setShowCreateForm(false);
-        // Navigate to reservation details or management
-        navigate('/reservations');
-      } else {
-        setError(response.error || 'Failed to create reservation');
-      }
-    } catch (error) {
-      setError('Network error. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const updateReservation = async (reservationId, updateData) => {
-    try {
-      const response = await reservationAPI.updateReservation(reservationId, updateData);
-
-      if (response.success) {
-        // Update local state
-        setReservations(prev =>
-          prev.map(reservation =>
-            reservation._id === reservationId ? { ...reservation, ...response.data } : reservation
-          )
-        );
-        setError('Reservation updated successfully');
-      } else {
-        setError(response.error || 'Failed to update reservation');
-      }
-    } catch (error) {
-      setError('Network error. Please try again.');
-    }
-  };
-
-  const cancelReservation = async (reservationId, reason) => {
-    try {
-      const response = await reservationAPI.cancelReservation(reservationId, { reason });
-
-      if (response.success) {
-        // Update local state
-        setReservations(prev =>
-          prev.map(reservation =>
-            reservation._id === reservationId ? { ...reservation, status: 'cancelled' } : reservation
-          )
-        );
-        setError('Reservation cancelled');
-      } else {
-        setError(response.error || 'Failed to cancel reservation');
-      }
-    } catch (error) {
-      setError('Network error. Please try again.');
-    }
-  };
-
-  const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('fr-FR');
-  };
-
-  const formatTime = (dateString) => {
-    return new Date(dateString).toLocaleTimeString('fr-FR', {
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
-
-  if (loading) {
-    return (
-      <div className="center-page">
-        <div className="glass-card">
-          <h1>Chargement...</h1>
-        </div>
-      </div>
-    );
   }
-
-  if (error && !loading) {
-    return (
-      <div className="center-page">
-        <div className="glass-card">
-          <h1>Erreur</h1>
-          <p>{error}</p>
-          <button className="btn-primary" onClick={() => fetchReservations()}>
-            Réessayer
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  const renderListView = () => {
-    return (
-      <div className="glass-card">
-        <h2>Réservations</h2>
-
-        {/* Filters */}
-        <div className="reservation-filters">
-          <div className="filter-row">
-            <select
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
-              className="filter-select"
-            >
-              <option value="">Tous les statuts</option>
-              <option value="pending">En attente</option>
-              <option value="approved">Approuvées</option>
-              <option value="active">Actives</option>
-              <option value="completed">Terminées</option>
-              <option value="cancelled">Annulées</option>
-            </select>
-
-            <select
-              value={filterCategory}
-              onChange={(e) => setFilterCategory(e.target.value)}
-              className="filter-select"
-            >
-              <option value="">Toutes les catégories</option>
-              {/* Categories will be populated from API */}
-            </select>
-          </div>
-
-          <div className="filter-row">
-            <input
-              type="date"
-              value={filterDateRange.start}
-              onChange={(e) => setFilterDateRange(prev => ({ ...prev, start: e.target.value }))}
-              className="filter-input"
-              placeholder="Date de début"
-            />
-            <input
-              type="date"
-              value={filterDateRange.end}
-              onChange={(e) => setFilterDateRange(prev => ({ ...prev, end: e.target.value }))}
-              className="filter-input"
-              placeholder="Date de fin"
-            />
-          </div>
-
-          <button
-            className="btn-ghost"
-            onClick={() => {
-              setFilterStatus('');
-              setFilterCategory('');
-              setFilterDateRange({ start: '', end: '' });
-            }}
-          >
-            Effacer les filtres
-          </button>
-
-          <button
-            className="btn-primary"
-            onClick={() => setShowCreateForm(true)}
-          >
-            Nouvelle réservation
-          </button>
-        </div>
-
-        <div className="reservation-list">
-          {reservations.length === 0 ? (
-            <div className="empty-state">
-              <div className="empty-icon">📅</div>
-              <p>Aucune réservation trouvée</p>
-            </div>
-          ) : (
-            <div className="reservations-grid">
-              {reservations.map(reservation => (
-                <div
-                  key={reservation._id}
-                  className={`reservation-item status-${reservation.status}`}
-                  onClick={() => fetchSingleReservation(reservation._id)}
-                >
-                  <div className="reservation-header">
-                    <h4>{reservation.equipment_id?.name || 'Équipement inconnu'}</h4>
-                    <div className="reservation-meta">
-                      <span className={`status-badge status-${reservation.status}`}>
-                        {reservation.status === 'pending' && 'En attente'}
-                        {reservation.status === 'approved' && 'Approuvée'}
-                        {reservation.status === 'active' && 'Active'}
-                        {reservation.status === 'completed' && 'Terminée'}
-                        {reservation.status === 'cancelled' && 'Annulée'}
-                      </span>
-                      <span className="reservation-dates">
-                        {formatDate(reservation.start_date)} - {formatDate(reservation.end_date)}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="reservation-content">
-                    <p>{reservation.purpose}</p>
-                    {reservation.notes && (
-                      <p><strong>Notes:</strong> {reservation.notes}</p>
-                    )}
-                  </div>
-
-                  <div className="reservation-actions">
-                    {reservation.status === 'pending' && user && (
-                      <button
-                        className="btn-small btn-danger"
-                        onClick={() => cancelReservation(reservation._id, "Annulation de l'utilisateur")}
-                      >
-                        Annuler
-                      </button>
-                    )}
-
-                    {(reservation.status === 'pending' || reservation.status === 'approved') && (
-                      <button
-                        className="btn-small btn-secondary"
-                        onClick={() => fetchSingleReservation(reservation._id)}
-                      >
-                        Modifier
-                      </button>
-                    )}
-
-                    <button
-                      className="btn-small"
-                      onClick={() => navigate(`/reservations/${reservation._id}`)}
-                      >
-                        Détails
-                      </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  };
-
-  const renderCalendarView = () => {
-    // Simple calendar implementation
-    const getDaysInMonth = (date) => {
-      const year = date.getFullYear();
-      const month = date.getMonth();
-      const firstDay = new Date(year, month, 1).getDay();
-      const daysInMonth = new Date(year, month + 1, 0).getDate();
-      const days = [];
-
-      // Add empty days at the beginning
-      for (let i = 0; i < firstDay; i++) {
-        days.push(<div key={`empty-${i}`} className="calendar-day empty" />);
-      }
-
-      // Add days with reservations
-      for (let i = 1; i <= daysInMonth; i++) {
-        const dayNumber = i - firstDay + 1;
-        const hasReservation = reservations.some(reservation => {
-          const reservationDate = new Date(reservation.start_date);
-          return reservationDate.getDate() === dayNumber &&
-                 reservationDate.getMonth() === month &&
-                 reservationDate.getFullYear() === year;
-        });
-
-        days.push(
-          <div
-            key={i}
-            className={`calendar-day ${hasReservation ? 'has-reservation' : ''} ${new Date(year, month, i).getDay() === 0 || new Date(year, month, i).getDay() === 6 ? 'weekend' : ''}`}
-            onClick={() => {
-              const dayReservations = reservations.filter(reservation => {
-                const reservationDate = new Date(reservation.start_date);
-                return reservationDate.getDate() === dayNumber &&
-                       reservationDate.getMonth() === month &&
-                       reservationDate.getFullYear() === year;
-              });
-
-              if (dayReservations.length > 0) {
-                // Show reservations for this day
-                // Implementation would go here
-              }
-            }}
-          >
-            {i}
-          </div>
-        );
-      }
-
-      return (
-        <div className="calendar-view">
-          <div className="calendar-header">
-            <button
-              onClick={() => {
-                const prevMonth = new Date(year, month - 1);
-                setFilterDateRange({
-                  ...filterDateRange,
-                  start: prevMonth
-                });
-              }}
-            >
-              ←
-            </button>
-            <div className="calendar-title">
-              {new Date(year, month).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}
-            </div>
-            <button
-              onClick={() => {
-                const nextMonth = new Date(year, month + 1);
-                setFilterDateRange({
-                  ...filterDateRange,
-                  start: nextMonth
-                });
-              }}
-            >
-              →
-            </button>
-          </div>
-
-          <div className="calendar-grid">
-            {days}
-          </div>
-
-          <div className="calendar-legend">
-            <div className="legend-item">
-              <div className="legend-color has-reservation"></div>
-              <span> Jour avec réservation</span>
-            </div>
-            <div className="legend-item">
-              <div className="legend-color"></div>
-              <span> Jour disponible</span>
-            </div>
-          </div>
-        </div>
-      );
-    };
-  };
 
   return (
-    <div className="center-page">
-      <div className="glass-card">
-        <div className="page-header">
-          <h1>Gestion des Réservations</h1>
-          <div className="view-toggle">
-            <button
-              className={`btn-toggle ${view === 'list' ? 'active' : ''}`}
-              onClick={() => setView('list')}
-            >
-              Liste
-            </button>
-            <button
-              className={`btn-toggle ${view === 'calendar' ? 'active' : ''}`}
-              onClick={() => setView('calendar')}
-            >
-              Calendrier
-            </button>
-          </div>
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold text-slate-900">Réservations</h1>
+          <p className="text-sm text-slate-600">
+            Créer et consulter vos réservations.
+          </p>
         </div>
 
-        <div className="reservation-controls">
+        <div className="flex gap-2">
           <button
-            className="btn-primary"
-            onClick={() => setShowCreateForm(true)}
+            className="px-4 py-2 rounded-lg bg-white border border-gray-200 hover:bg-gray-50 text-sm"
+            onClick={load}
+          >
+            Rafraîchir
+          </button>
+          <button
+            className="px-4 py-2 rounded-lg bg-slate-900 text-white hover:opacity-90 text-sm"
+            onClick={() => setOpen(true)}
           >
             + Nouvelle réservation
           </button>
         </div>
-
-        {selectedReservation && (
-          <div className="selected-reservation">
-            <h3>Réservation sélectionnée</h3>
-            <div className="selected-details">
-              <p><strong>Équipement:</strong> {selectedReservation.equipment_id?.name}</p>
-              <p><strong>Période:</strong> {formatDate(selectedReservation.start_date)} - {formatDate(selectedReservation.end_date)}</p>
-              <p><strong>Statut:</strong> {selectedReservation.status}</p>
-            </div>
-            <div className="selected-actions">
-              <button className="btn-small btn-secondary">Modifier</button>
-              <button className="btn-small btn-danger">Annuler</button>
-            </div>
-          </div>
-        )}
-
-        {view === 'list' && renderListView()}
-        {view === 'calendar' && renderCalendarView()}
       </div>
 
-      {/* Create Reservation Modal */}
-      {showCreateForm && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <div className="modal-header">
-              <h2>Nouvelle Réservation</h2>
-              <button className="modal-close" onClick={() => setShowCreateForm(false)}>✕</button>
+      {err && (
+        <div className="bg-red-50 text-red-700 border border-red-200 rounded-xl px-4 py-3 text-sm">
+          {err}
+        </div>
+      )}
+
+      <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
+        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+          <div className="font-semibold text-slate-900">Liste</div>
+          <div className="text-xs text-slate-500">
+            {reservations.length} réservation(s)
+          </div>
+        </div>
+
+        {loading ? (
+          <div className="p-6 text-slate-600">Chargement...</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left font-semibold text-slate-700">
+                    Équipement
+                  </th>
+                  <th className="px-6 py-3 text-left font-semibold text-slate-700">
+                    Période
+                  </th>
+                  <th className="px-6 py-3 text-left font-semibold text-slate-700">
+                    Statut
+                  </th>
+                  <th className="px-6 py-3 text-right font-semibold text-slate-700">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {reservations.map((r) => (
+                  <tr key={r._id} className="border-t">
+                    <td className="px-6 py-4 text-slate-900 font-medium">
+                      {r.equipment_id?.name ||
+                        r.equipment?.name ||
+                        r.equipment_name ||
+                        "—"}
+                    </td>
+                    <td className="px-6 py-4 text-slate-600">
+                      {r.start_date
+                        ? new Date(r.start_date).toLocaleDateString("fr-FR")
+                        : "—"}{" "}
+                      →{" "}
+                      {r.end_date
+                        ? new Date(r.end_date).toLocaleDateString("fr-FR")
+                        : "—"}
+                    </td>
+                    <td className="px-6 py-4 text-slate-600">
+                      {r.status || "—"}
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <button
+                        className="px-3 py-2 rounded-lg border border-gray-200 hover:bg-gray-50"
+                        onClick={() => navigate(`/reservations/${r._id}`)}
+                      >
+                        Détails
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+
+                {!reservations.length && (
+                  <tr className="border-t">
+                    <td className="px-6 py-6 text-slate-600" colSpan={4}>
+                      Aucune réservation.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Modal */}
+      {open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden">
+            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+              <div className="font-semibold text-slate-900">
+                Nouvelle réservation
+              </div>
+              <button
+                className="w-10 h-10 rounded-lg border border-gray-200"
+                onClick={() => setOpen(false)}
+              >
+                ✕
+              </button>
             </div>
-            <form className="modal-form" onSubmit={(e) => {
-              e.preventDefault();
-              // Handle form submission
-            }}>
-              <div className="form-group">
-                <label>Équipement</label>
-                <select name="equipmentId" required>
-                  {/* Equipment options would be populated here */}
-                  <option value="">Sélectionnez un équipement</option>
+
+            <form className="p-6 space-y-4" onSubmit={create}>
+              <div>
+                <label className="text-xs font-semibold text-slate-700">
+                  Équipement
+                </label>
+                <select
+                  className="mt-1 w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none"
+                  value={form.equipment_id}
+                  onChange={(e) =>
+                    setForm((p) => ({ ...p, equipment_id: e.target.value }))
+                  }
+                  required
+                >
+                  <option value="">Sélectionnez</option>
+                  {equipment.map((eq) => (
+                    <option key={eq._id} value={eq._id}>
+                      {eq.name}
+                    </option>
+                  ))}
                 </select>
               </div>
 
-              <div className="form-group">
-                <label>Date de début</label>
-                <input
-                  type="date"
-                  name="startDate"
-                  required
-                  min={new Date().toISOString().split('T')[0]}
-                />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-semibold text-slate-700">
+                    Date début
+                  </label>
+                  <input
+                    className="mt-1 w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none"
+                    type="date"
+                    value={form.start_date}
+                    onChange={(e) =>
+                      setForm((p) => ({ ...p, start_date: e.target.value }))
+                    }
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-slate-700">
+                    Date fin
+                  </label>
+                  <input
+                    className="mt-1 w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none"
+                    type="date"
+                    value={form.end_date}
+                    onChange={(e) =>
+                      setForm((p) => ({ ...p, end_date: e.target.value }))
+                    }
+                    required
+                  />
+                </div>
               </div>
 
-              <div className="form-group">
-                <label>Date de fin</label>
+              <div>
+                <label className="text-xs font-semibold text-slate-700">
+                  Quantité
+                </label>
                 <input
-                  type="date"
-                  name="endDate"
-                  required
-                  min={new Date().toISOString().split('T')[0]}
-                />
-              </div>
-
-              <div className="form-group">
-                <label>Quantité</label>
-                <input
+                  className="mt-1 w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none"
                   type="number"
-                  name="quantity"
-                  min="1"
+                  min={1}
+                  value={form.quantity}
+                  onChange={(e) =>
+                    setForm((p) => ({ ...p, quantity: Number(e.target.value) }))
+                  }
                   required
                 />
               </div>
 
-              <div className="form-group">
-                <label>Objectif</label>
+              <div>
+                <label className="text-xs font-semibold text-slate-700">
+                  Objectif
+                </label>
                 <textarea
-                  name="purpose"
+                  className="mt-1 w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none"
+                  rows={3}
+                  value={form.purpose}
+                  onChange={(e) =>
+                    setForm((p) => ({ ...p, purpose: e.target.value }))
+                  }
                   required
-                  rows="3"
-                ></textarea>
+                />
               </div>
 
-              <div className="form-group">
-                <label>Notes (optionnel)</label>
+              <div>
+                <label className="text-xs font-semibold text-slate-700">
+                  Notes (optionnel)
+                </label>
                 <textarea
-                  name="notes"
-                  rows="2"
-                ></textarea>
+                  className="mt-1 w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none"
+                  rows={2}
+                  value={form.notes}
+                  onChange={(e) =>
+                    setForm((p) => ({ ...p, notes: e.target.value }))
+                  }
+                />
               </div>
 
-              <div className="form-actions">
-                <button type="submit" className="btn-primary" disabled={loading}>
-                  {loading ? 'Création...' : 'Créer la réservation'}
-                </button>
+              <div className="flex justify-end gap-2 pt-2">
                 <button
                   type="button"
-                  className="btn-secondary"
-                  onClick={() => setShowCreateForm(false)}
+                  className="px-4 py-2 rounded-lg bg-white border border-gray-200 hover:bg-gray-50 text-sm"
+                  onClick={() => setOpen(false)}
                 >
                   Annuler
+                </button>
+                <button
+                  className="px-4 py-2 rounded-lg bg-slate-900 text-white hover:opacity-90 text-sm"
+                  disabled={loading}
+                >
+                  {loading ? "Création..." : "Créer"}
                 </button>
               </div>
             </form>
@@ -531,6 +317,4 @@ const ReservationManagement = () => {
       )}
     </div>
   );
-};
-
-export default ReservationManagement;
+}
