@@ -1,70 +1,99 @@
 const express = require("express");
 const router = express.Router();
+
 const auth = require("../middleware/auth");
-const multer = require("multer");
-const path = require("path");
+const requireRole = require("../middleware/requireRole");
+
 const User = require("../models/User");
 
-// Multer config avatars
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, "uploads/avatars"),
-  filename: (req, file, cb) => cb(null, req.user._id + path.extname(file.originalname)),
+/**
+ * GET /api/users
+ * Admin only - list users
+ */
+router.get("/", auth, requireRole("admin"), async (req, res) => {
+  try {
+    const users = await User.find().select("-password").sort({ createdAt: -1 });
+    return res.json(users); // ✅ retourne un tableau direct (simple côté React)
+  } catch (err) {
+    console.error("GET /users error:", err);
+    return res.status(500).json({ message: "Erreur serveur" });
+  }
 });
-const upload = multer({ storage });
 
-// GET /me
-router.get("/me", auth, async (req, res) => res.json(req.user));
+/**
+ * GET /api/users/me
+ * Auth user - current profile
+ */
+router.get("/me", auth, async (req, res) => {
+  try {
+    const me = await User.findById(req.user.id).select("-password");
+    if (!me) return res.status(404).json({ message: "Utilisateur introuvable" });
+    return res.json(me);
+  } catch (err) {
+    console.error("GET /users/me error:", err);
+    return res.status(500).json({ message: "Erreur serveur" });
+  }
+});
 
-// PATCH /me
-router.patch("/me", auth, async (req, res) => {
+/**
+ * PATCH /api/users/:id
+ * Admin only - update name/email
+ */
+router.patch("/:id", auth, requireRole("admin"), async (req, res) => {
   try {
     const { name, email } = req.body;
-    if (email) {
-      const exists = await User.findOne({ email, _id: { $ne: req.user._id } });
-      if (exists) return res.status(400).json({ message: "Email déjà utilisé" });
+
+    const updated = await User.findByIdAndUpdate(
+      req.params.id,
+      { ...(name !== undefined ? { name } : {}), ...(email !== undefined ? { email } : {}) },
+      { new: true, runValidators: true }
+    ).select("-password");
+
+    if (!updated) return res.status(404).json({ message: "Utilisateur introuvable" });
+    return res.json(updated);
+  } catch (err) {
+    console.error("PATCH /users/:id error:", err);
+    return res.status(500).json({ message: "Erreur serveur" });
+  }
+});
+
+/**
+ * PATCH /api/users/:id/role
+ * Admin only - change role
+ */
+router.patch("/:id/role", auth, requireRole("admin"), async (req, res) => {
+  try {
+    const { role } = req.body;
+    if (!["user", "supervisor", "admin"].includes(role)) {
+      return res.status(400).json({ message: "Rôle invalide" });
     }
 
     const updated = await User.findByIdAndUpdate(
-      req.user._id,
-      { $set: { name: name ?? req.user.name, email: email ?? req.user.email } },
-      { new: true }
+      req.params.id,
+      { role },
+      { new: true, runValidators: true }
     ).select("-password");
 
-    res.json(updated);
+    if (!updated) return res.status(404).json({ message: "Utilisateur introuvable" });
+    return res.json(updated);
   } catch (err) {
-    console.error("Update profile error:", err);
-    res.status(500).json({ message: "Erreur serveur" });
+    console.error("PATCH /users/:id/role error:", err);
+    return res.status(500).json({ message: "Erreur serveur" });
   }
 });
 
-// PATCH /me/password
-router.patch("/me/password", auth, async (req, res) => {
+/**
+ * DELETE /api/users/:id
+ * Admin only - delete user
+ */
+router.delete("/:id", auth, requireRole("admin"), async (req, res) => {
   try {
-    const { oldPassword, newPassword } = req.body;
-    const user = await User.findById(req.user._id);
-
-    if (!(await user.matchPassword(oldPassword))) return res.status(400).json({ message: "Ancien mot de passe incorrect" });
-
-    user.password = newPassword;
-    await user.save();
-
-    res.json({ message: "Mot de passe mis à jour" });
+    const deleted = await User.findByIdAndDelete(req.params.id);
+    if (!deleted) return res.status(404).json({ message: "Utilisateur introuvable" });
+    return res.json({ success: true });
   } catch (err) {
-    console.error("Update password error:", err);
-    res.status(500).json({ message: "Erreur serveur" });
-  }
-});
-
-// PATCH /me/avatar
-router.patch("/me/avatar", auth, upload.single("avatar"), async (req, res) => {
-  try {
-    if (!req.file) return res.status(400).json({ message: "Fichier manquant" });
-
-    const updated = await User.findByIdAndUpdate(req.user._id, { avatar: req.file.filename }, { new: true }).select("-password");
-    res.json(updated);
-  } catch (err) {
-    console.error("Upload avatar error:", err);
-    res.status(500).json({ message: "Erreur serveur" });
+    console.error("DELETE /users/:id error:", err);
+    return res.status(500).json({ message: "Erreur serveur" });
   }
 });
 

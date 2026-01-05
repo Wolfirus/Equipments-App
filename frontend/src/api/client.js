@@ -1,7 +1,8 @@
 import axios from "axios";
 
 const baseURL =
-  (process.env.REACT_APP_API_URL || "").replace(/\/$/, "") || "http://localhost:5000/api";
+  (process.env.REACT_APP_API_URL || "").replace(/\/$/, "") ||
+  "http://localhost:5000/api";
 
 const client = axios.create({
   baseURL,
@@ -9,7 +10,8 @@ const client = axios.create({
 });
 
 client.interceptors.request.use((config) => {
-  const token = localStorage.getItem("auth_token");
+  const token =
+    localStorage.getItem("auth_token") || localStorage.getItem("token");
   if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });

@@ -11,14 +11,41 @@ export default function AdminDashboard() {
   const [editForm, setEditForm] = useState({ name: "", email: "" });
   const [error, setError] = useState("");
 
+  // ✅ supporte plusieurs formats de réponse backend
+  const extractUsers = (payload) => {
+    if (Array.isArray(payload)) return payload;
+    if (Array.isArray(payload?.users)) return payload.users;
+    if (Array.isArray(payload?.data?.users)) return payload.data.users;
+    if (Array.isArray(payload?.data?.data?.users)) return payload.data.data.users;
+    return [];
+  };
+
+  // ✅ supporte user enveloppé: {success, data: {...}} ou direct
+  const extractUser = (payload) => {
+    // payload = res.data
+    return payload?.data?.user || payload?.data || payload?.user || payload;
+  };
+
   useEffect(() => {
     const fetchUsers = async () => {
       try {
         setError("");
+        setLoading(true);
+
         const res = await client.get("/users");
-        setUsers(res.data);
+        const list = extractUsers(res.data);
+
+        setUsers(list);
       } catch (err) {
-        setError("Impossible de charger les utilisateurs.");
+        console.error("GET /users error:", err);
+        const msg =
+          err?.response?.data?.message ||
+          err?.response?.data?.error ||
+          err?.message ||
+          "Impossible de charger les utilisateurs.";
+
+        setError(msg);
+        setUsers([]);
       } finally {
         setLoading(false);
       }
@@ -50,11 +77,17 @@ export default function AdminDashboard() {
 
     try {
       setSavingId(id);
-      const res = await client.patch(`/users/${id}`, { name: editForm.name, email: editForm.email });
-      setUsers((prev) => prev.map((u) => (u._id === id ? { ...u, ...res.data } : u)));
+      const res = await client.patch(`/users/${id}`, {
+        name: editForm.name,
+        email: editForm.email,
+      });
+
+      const updated = extractUser(res.data);
+
+      setUsers((prev) => prev.map((u) => (u._id === id ? { ...u, ...updated } : u)));
       cancelEdit();
     } catch (err) {
-      alert(err.response?.data?.message || "Erreur lors de la mise à jour.");
+      alert(err?.response?.data?.message || "Erreur lors de la mise à jour.");
     } finally {
       setSavingId(null);
     }
@@ -64,9 +97,13 @@ export default function AdminDashboard() {
     try {
       setSavingId(id);
       const res = await client.patch(`/users/${id}/role`, { role: newRole });
-      setUsers((prev) => prev.map((u) => (u._id === id ? { ...u, role: res.data.role } : u)));
-    } catch {
-      alert("Erreur lors du changement de rôle.");
+
+      const updated = extractUser(res.data);
+      const role = updated?.role ?? res.data?.role ?? newRole;
+
+      setUsers((prev) => prev.map((u) => (u._id === id ? { ...u, role } : u)));
+    } catch (err) {
+      alert(err?.response?.data?.message || "Erreur lors du changement de rôle.");
     } finally {
       setSavingId(null);
     }
@@ -79,8 +116,8 @@ export default function AdminDashboard() {
       setSavingId(id);
       await client.delete(`/users/${id}`);
       setUsers((prev) => prev.filter((u) => u._id !== id));
-    } catch {
-      alert("Erreur lors de la suppression.");
+    } catch (err) {
+      alert(err?.response?.data?.message || "Erreur lors de la suppression.");
     } finally {
       setSavingId(null);
     }
@@ -118,9 +155,11 @@ export default function AdminDashboard() {
                   <th className="px-6 py-3 text-right font-semibold text-slate-700">Actions</th>
                 </tr>
               </thead>
+
               <tbody>
                 {users.map((u) => {
                   const isEditing = editingId === u._id;
+
                   return (
                     <tr key={u._id} className="border-t">
                       <td className="px-6 py-4">
@@ -134,6 +173,7 @@ export default function AdminDashboard() {
                           <span className="font-medium text-slate-900">{u.name}</span>
                         )}
                       </td>
+
                       <td className="px-6 py-4">
                         {isEditing ? (
                           <input
@@ -145,6 +185,7 @@ export default function AdminDashboard() {
                           <span className="text-slate-600">{u.email}</span>
                         )}
                       </td>
+
                       <td className="px-6 py-4">
                         <select
                           className="rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none"
@@ -157,6 +198,7 @@ export default function AdminDashboard() {
                           <option value="admin">Administrateur</option>
                         </select>
                       </td>
+
                       <td className="px-6 py-4 text-right">
                         {isEditing ? (
                           <div className="inline-flex gap-2">
@@ -167,6 +209,7 @@ export default function AdminDashboard() {
                             >
                               Annuler
                             </button>
+
                             <button
                               className="px-3 py-2 rounded-lg bg-slate-900 text-white hover:opacity-90"
                               onClick={() => handleSaveEdit(u._id)}
@@ -203,6 +246,10 @@ export default function AdminDashboard() {
                 })}
               </tbody>
             </table>
+
+            {!users.length && !error && (
+              <div className="p-6 text-slate-600">Aucun utilisateur trouvé.</div>
+            )}
           </div>
         )}
       </div>
