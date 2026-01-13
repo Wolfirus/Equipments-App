@@ -1,10 +1,14 @@
-const requireRole = (...allowedRoles) => {
+module.exports = (...allowedRoles) => {
   return (req, res, next) => {
-    if (!req.user) return res.status(401).json({ message: "Non authentifié" });
-    if (!allowedRoles.includes(req.user.role)) return res.status(403).json({ message: "Accès refusé" });
+    const role = (req.user?.role || "").toLowerCase();
+    const ok = allowedRoles.map(r => r.toLowerCase()).includes(role);
+
+    if (!ok) {
+      return res.status(403).json({
+        success: false,
+        message: "Accès refusé",
+      });
+    }
     next();
   };
 };
-
-module.exports = requireRole;
-

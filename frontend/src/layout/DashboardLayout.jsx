@@ -1,3 +1,4 @@
+// src/layout/DashboardLayout.jsx
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
@@ -24,6 +25,12 @@ export default function DashboardLayout({ children }) {
   const { user, logout } = useAuth();
   const location = useLocation();
 
+  const role = user?.role || "guest";
+  const isAdmin = role === "admin";
+  const isSupervisor = role === "supervisor";
+  const isUser = role === "user";
+  const canManage = isAdmin || isSupervisor; // ✅ gestion partagée
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Sidebar */}
@@ -35,36 +42,39 @@ export default function DashboardLayout({ children }) {
 
         <nav className="p-3">
           <ul>
+            {/* commun */}
             <NavItem to="/" label="Accueil" icon="🏠" />
-            <NavItem to="/equipment" label="Équipements" icon="🧰" />
-            <NavItem to="/reservations" label="Réservations" icon="📅" />
+            <NavItem to="/equipment" label="Catalogue" icon="🧰" />
             <NavItem to="/profile" label="Profil" icon="👤" />
 
-            <div className="mt-6 px-4 text-xs uppercase tracking-wider text-slate-400">
-              Public
-            </div>
-            <NavItem to="/" label="Site" icon="🌐" />
-            <NavItem to="/about" label="À propos" icon="ℹ️" />
-            <NavItem to="/contact" label="Contact" icon="✉️" />
+            {/* user seulement */}
+            {isUser && <NavItem to="/reservations" label="Mes réservations" icon="📅" />}
 
-            {user?.role === "admin" && (
+            {/* ✅ gestion admin + supervisor (mêmes pages) */}
+            {canManage && (
               <>
                 <div className="mt-6 px-4 text-xs uppercase tracking-wider text-slate-400">
-                  Administration
+                  Gestion
                 </div>
                 <NavItem to="/admin" label="Dashboard" icon="⚙️" />
-                <NavItem to="/admin/equipments" label="Gestion équipements" icon="🛠️" />
-                <NavItem to="/admin/reservations" label="Gestion réservations" icon="✅" />
+                <NavItem to="/admin/equipments" label="Équipements" icon="🛠️" />
+                <NavItem to="/admin/reservations" label="Réservations" icon="✅" />
                 <NavItem to="/admin/messages" label="Messages" icon="💬" />
               </>
             )}
+
+            {/* infos (sans Site) */}
+            <div className="mt-6 px-4 text-xs uppercase tracking-wider text-slate-400">
+              Informations
+            </div>
+            <NavItem to="/about" label="À propos" icon="ℹ️" />
+            <NavItem to="/contact" label="Contact" icon="✉️" />
           </ul>
         </nav>
       </aside>
 
       {/* Main */}
       <div className="pl-72 min-h-screen flex flex-col">
-        {/* Topbar */}
         <header className="sticky top-0 z-30 bg-white/80 backdrop-blur border-b border-gray-200">
           <div className="flex items-center justify-between px-6 py-4">
             <div>
@@ -72,10 +82,7 @@ export default function DashboardLayout({ children }) {
               <div className="text-lg font-bold text-slate-900">
                 {user ? user.name : "Invité"}
               </div>
-              {/* debug */}
-              <div className="text-[11px] text-slate-400">
-                route: {location.pathname}
-              </div>
+              <div className="text-[11px] text-slate-400">route: {location.pathname}</div>
             </div>
 
             <div className="flex items-center gap-3">
@@ -106,10 +113,7 @@ export default function DashboardLayout({ children }) {
           </div>
         </header>
 
-        {/* Content */}
-        <main className="flex-1 p-6 overflow-y-auto">
-          {children}
-        </main>
+        <main className="flex-1 p-6 overflow-y-auto">{children}</main>
       </div>
     </div>
   );
