@@ -1,94 +1,142 @@
-const API_BASE =
-  (process.env.REACT_APP_API_URL || "").replace(/\/$/, "") || "http://localhost:5000/api";
+// frontend/src/services/api.js
+import client from "../api/client";
 
-function getToken() {
-  return localStorage.getItem("auth_token");
-}
-
-function toQuery(params = {}) {
-  const usp = new URLSearchParams();
-  Object.entries(params).forEach(([k, v]) => {
-    if (v === undefined || v === null || v === "") return;
-    usp.set(k, String(v));
-  });
-  const q = usp.toString();
-  return q ? `?${q}` : "";
-}
-
-async function request(path, options = {}) {
-  const token = getToken();
-  const res = await fetch(`${API_BASE}${path}`, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...(options.headers || {}),
-    },
-  });
-
-  const isJson = res.headers.get("content-type")?.includes("application/json");
-  const data = isJson ? await res.json() : await res.text();
-
-  if (!res.ok) {
-    throw new Error(data?.message || "Request failed");
+/** Helper: standardize responses */
+const safe = async (promise) => {
+  try {
+    const res = await promise;
+    return { success: true, data: res.data };
+  } catch (err) {
+    const msg =
+      err?.response?.data?.message ||
+      err?.response?.data?.error ||
+      err?.message ||
+      "Erreur réseau";
+    return { success: false, error: msg, raw: err?.response?.data };
   }
-  return data;
-}
-
-/** EQUIPMENT API
- * Supports both:
- * - equipmentAPI.list()
- * - equipmentAPI.getEquipment(params)     (your old pages)
- */
-export const equipmentAPI = {
-  list: (params = {}) => request(`/equipment${toQuery(params)}`),
-  get: (id) => request(`/equipment/${id}`),
-  create: (payload) => request(`/equipment`, { method: "POST", body: JSON.stringify(payload) }),
-  update: (id, payload) =>
-    request(`/equipment/${id}`, { method: "PUT", body: JSON.stringify(payload) }),
-  remove: (id) => request(`/equipment/${id}`, { method: "DELETE" }),
-
-  // compatibility for your pages
-  getEquipment: (params = {}) => request(`/equipment${toQuery(params)}`),
-  getEquipmentById: (id) => request(`/equipment/${id}`),
-  getCategories: () => request(`/categories`),
 };
 
-/** RESERVATION API (compatibility with your pages) */
-export const reservationAPI = {
-  list: (params = {}) => request(`/reservations${toQuery(params)}`),
-  get: (id) => request(`/reservations/${id}`),
-  create: (payload) => request(`/reservations`, { method: "POST", body: JSON.stringify(payload) }),
-  update: (id, payload) =>
-    request(`/reservations/${id}`, { method: "PUT", body: JSON.stringify(payload) }),
-
-  approve: (id, payload = {}) =>
-    request(`/reservations/${id}/approve`, { method: "PUT", body: JSON.stringify(payload) }),
-  reject: (id, payload = {}) =>
-    request(`/reservations/${id}/reject`, { method: "PUT", body: JSON.stringify(payload) }),
-  cancel: (id, payload = {}) =>
-    request(`/reservations/${id}/cancel`, { method: "PUT", body: JSON.stringify(payload) }),
-
-  // compatibility for your pages
-  getReservations: (params = {}) => request(`/reservations${toQuery(params)}`),
-  getReservationById: (id) => request(`/reservations/${id}`),
-  createReservation: (payload) => request(`/reservations`, { method: "POST", body: JSON.stringify(payload) }),
-  updateReservation: (id, payload) =>
-    request(`/reservations/${id}`, { method: "PUT", body: JSON.stringify(payload) }),
-  cancelReservation: (id, payload = {}) =>
-    request(`/reservations/${id}/cancel`, { method: "PUT", body: JSON.stringify(payload) }),
+/* ================= AUTH ================= */
+export const authAPI = {
+  login: (payload) => safe(client.post("/auth/login", payload)),
+  register: (payload) => safe(client.post("/auth/register", payload)),
 };
 
-/** PROFILE API (compatibility with your ProfilePage) */
+/* ================= USERS (ADMIN) ================= */
+export const usersAPI = {
+  getUsers: () => safe(client.get("/users")),
+  getMe: () => safe(client.get("/users/me")),
+  updateMe: (payload) => safe(client.patch("/users/me", payload)),
+  updateUser: (id, payload) => safe(client.put(`/users/${id}`, payload)),
+  deleteUser: (id) => safe(client.delete(`/users/${id}`)),
+};
+
+/* ================= PROFILE ================= */
 export const profileAPI = {
-  getProfile: () => request(`/profile`),
-  updateProfile: (payload) => request(`/profile`, { method: "PUT", body: JSON.stringify(payload) }),
-  updatePreferences: (payload) =>
-    request(`/profile/preferences`, { method: "PUT", body: JSON.stringify(payload) }),
-  changePassword: (payload) =>
-    request(`/profile/password`, { method: "PUT", body: JSON.stringify(payload) }),
-  deleteAccount: (payload) =>
-    request(`/profile`, { method: "DELETE", body: JSON.stringify(payload) }),
+  // ✅ aliases compatibles avec ProfilePage.jsx
+  get: () => safe(client.get("/profile")),
+  getProfile: () => safe(client.get("/profile")),
+
+  update: (payload) => safe(client.put("/profile", payload)),
+  updateProfile: (payload) => safe(client.put("/profile", payload)),
+
+  updatePreferences: (payload) => safe(client.put("/profile/preferences", payload)),
+  changePassword: (payload) => safe(client.put("/profile/password", payload)),
+  deleteAccount: (payload) => safe(client.delete("/profile", { data: payload })),
 };
 
-export default { equipmentAPI, reservationAPI, profileAPI };
+/* ================= CATEGORIES ================= */
+export const categoryAPI = {
+  getCategories: (params = {}) => safe(client.get("/categories", { params })),
+  getTree: () => safe(client.get("/categories/tree")),
+  getById: (id) => safe(client.get(`/categories/${id}`)),
+  getCategoryEquipment: (id, params = {}) =>
+    safe(client.get(`/categories/${id}/equipment`, { params })),
+
+  // Admin
+  create: (payload) => safe(client.post("/categories", payload)),
+  update: (id, payload) => safe(client.put(`/categories/${id}`, payload)),
+  remove: (id) => safe(client.delete(`/categories/${id}`)),
+  stats: () => safe(client.get("/categories/stats")),
+};
+
+/* ================= EQUIPMENT ================= */
+export const equipmentAPI = {
+  // ✅ tes pages utilisent getEquipment + getEquipmentById + getCategories
+  getEquipment: (params = {}) => safe(client.get("/equipment", { params })),
+  list: (params = {}) => safe(client.get("/equipment", { params })),
+
+  getEquipmentById: (id) => safe(client.get(`/equipment/${id}`)),
+  get: (id) => safe(client.get(`/equipment/${id}`)),
+
+  // ✅ Admin page utilise create/update/remove (on garde les deux)
+  createEquipment: (payload) => safe(client.post("/equipment", payload)),
+  create: (payload) => safe(client.post("/equipment", payload)),
+
+  updateEquipment: (id, payload) => safe(client.put(`/equipment/${id}`, payload)),
+  update: (id, payload) => safe(client.put(`/equipment/${id}`, payload)),
+
+  deleteEquipment: (id) => safe(client.delete(`/equipment/${id}`)),
+  remove: (id) => safe(client.delete(`/equipment/${id}`)),
+
+  // categories
+  getCategories: (params = {}) => safe(client.get("/categories", { params })),
+};
+
+/* ================= RESERVATIONS ================= */
+export const reservationAPI = {
+  getReservations: (params = {}) => safe(client.get("/reservations", { params })),
+  list: (params = {}) => safe(client.get("/reservations", { params })),
+
+  getReservationById: (id) => safe(client.get(`/reservations/${id}`)),
+  get: (id) => safe(client.get(`/reservations/${id}`)),
+
+  createReservation: (payload) => safe(client.post("/reservations", payload)),
+  create: (payload) => safe(client.post("/reservations", payload)),
+
+  updateReservation: (id, payload) => safe(client.put(`/reservations/${id}`, payload)),
+  update: (id, payload) => safe(client.put(`/reservations/${id}`, payload)),
+
+  cancelReservation: (id) => safe(client.put(`/reservations/${id}/cancel`)),
+  cancel: (id) => safe(client.put(`/reservations/${id}/cancel`)),
+
+  approveReservation: (id, payload = {}) => safe(client.put(`/reservations/${id}/approve`, payload)),
+  approve: (id, payload = {}) => safe(client.put(`/reservations/${id}/approve`, payload)),
+
+  rejectReservation: (id, payload = {}) => safe(client.put(`/reservations/${id}/reject`, payload)),
+  reject: (id, payload = {}) => safe(client.put(`/reservations/${id}/reject`, payload)),
+
+  getEquipmentAvailability: (equipmentId, params = {}) =>
+    safe(client.get(`/reservations/equipment/${equipmentId}/availability`, { params })),
+
+  getStats: () => safe(client.get("/reservations/stats")),
+};
+
+/* ================= MESSAGES ================= */
+export const messageAPI = {
+  // ✅ Contact.jsx يستعمل messageAPI.create أو sendMessage حسب نسختك → نخلي الاثنين
+  sendMessage: (payload) => safe(client.post("/messages", payload)),
+  create: (payload) => safe(client.post("/messages", payload)),
+
+  getMessages: () => safe(client.get("/messages")),
+  deleteMessage: (id) => safe(client.delete(`/messages/${id}`)),
+};
+
+/* ================= NOTIFICATIONS ================= */
+export const notificationAPI = {
+  getNotifications: (params = {}) => safe(client.get("/notifications", { params })),
+  getUnread: (params = {}) => safe(client.get("/notifications/unread", { params })),
+  markRead: (id) => safe(client.put(`/notifications/${id}/read`)),
+  markAllRead: () => safe(client.put("/notifications/read-all")),
+};
+
+export default {
+  authAPI,
+  usersAPI,
+  profileAPI,
+  equipmentAPI,
+  reservationAPI,
+  categoryAPI,
+  messageAPI,
+  notificationAPI,
+};
