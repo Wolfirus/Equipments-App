@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
-import client from "../api/client";
 import { useAuth } from "../context/AuthContext";
+import { usersAPI } from "../services/api";
 
 export default function AdminDashboard() {
   const { user } = useAuth();
@@ -11,40 +11,15 @@ export default function AdminDashboard() {
   const [editForm, setEditForm] = useState({ name: "", email: "" });
   const [error, setError] = useState("");
 
-  // ✅ supporte plusieurs formats de réponse backend
-  const extractUsers = (payload) => {
-    if (Array.isArray(payload)) return payload;
-    if (Array.isArray(payload?.users)) return payload.users;
-    if (Array.isArray(payload?.data?.users)) return payload.data.users;
-    if (Array.isArray(payload?.data?.data?.users)) return payload.data.data.users;
-    return [];
-  };
-
-  // ✅ supporte user enveloppé: {success, data: {...}} ou direct
-  const extractUser = (payload) => {
-    // payload = res.data
-    return payload?.data?.user || payload?.data || payload?.user || payload;
-  };
-
   useEffect(() => {
     const fetchUsers = async () => {
       try {
         setError("");
         setLoading(true);
-
-        const res = await client.get("/users");
-        const list = extractUsers(res.data);
-
-        setUsers(list);
+        const list = await usersAPI.list();
+        setUsers(Array.isArray(list) ? list : []);
       } catch (err) {
-        console.error("GET /users error:", err);
-        const msg =
-          err?.response?.data?.message ||
-          err?.response?.data?.error ||
-          err?.message ||
-          "Impossible de charger les utilisateurs.";
-
-        setError(msg);
+        setError(err?.message || "Impossible de charger les utilisateurs.");
         setUsers([]);
       } finally {
         setLoading(false);
@@ -77,17 +52,11 @@ export default function AdminDashboard() {
 
     try {
       setSavingId(id);
-      const res = await client.patch(`/users/${id}`, {
-        name: editForm.name,
-        email: editForm.email,
-      });
-
-      const updated = extractUser(res.data);
-
+      const updated = await usersAPI.update(id, { name: editForm.name, email: editForm.email });
       setUsers((prev) => prev.map((u) => (u._id === id ? { ...u, ...updated } : u)));
       cancelEdit();
     } catch (err) {
-      alert(err?.response?.data?.message || "Erreur lors de la mise à jour.");
+      alert(err?.message || "Erreur lors de la mise à jour.");
     } finally {
       setSavingId(null);
     }
@@ -96,14 +65,10 @@ export default function AdminDashboard() {
   const handleRoleChange = async (id, newRole) => {
     try {
       setSavingId(id);
-      const res = await client.patch(`/users/${id}/role`, { role: newRole });
-
-      const updated = extractUser(res.data);
-      const role = updated?.role ?? res.data?.role ?? newRole;
-
-      setUsers((prev) => prev.map((u) => (u._id === id ? { ...u, role } : u)));
+      const updated = await usersAPI.setRole(id, newRole);
+      setUsers((prev) => prev.map((u) => (u._id === id ? { ...u, role: updated?.role || newRole } : u)));
     } catch (err) {
-      alert(err?.response?.data?.message || "Erreur lors du changement de rôle.");
+      alert(err?.message || "Erreur lors du changement de rôle.");
     } finally {
       setSavingId(null);
     }
@@ -114,10 +79,10 @@ export default function AdminDashboard() {
 
     try {
       setSavingId(id);
-      await client.delete(`/users/${id}`);
+      await usersAPI.remove(id);
       setUsers((prev) => prev.filter((u) => u._id !== id));
     } catch (err) {
-      alert(err?.response?.data?.message || "Erreur lors de la suppression.");
+      alert(err?.message || "Erreur lors de la suppression.");
     } finally {
       setSavingId(null);
     }
@@ -131,9 +96,7 @@ export default function AdminDashboard() {
       </div>
 
       {error && (
-        <div className="bg-red-50 text-red-700 border border-red-200 rounded-xl px-4 py-3 text-sm">
-          {error}
-        </div>
+        <div className="bg-red-50 text-red-700 border border-red-200 rounded-xl px-4 py-3 text-sm">{error}</div>
       )}
 
       <div className="bg-white shadow-xl rounded-2xl overflow-hidden">
@@ -247,9 +210,7 @@ export default function AdminDashboard() {
               </tbody>
             </table>
 
-            {!users.length && !error && (
-              <div className="p-6 text-slate-600">Aucun utilisateur trouvé.</div>
-            )}
+            {!users.length && !error && <div className="p-6 text-slate-600">Aucun utilisateur trouvé.</div>}
           </div>
         )}
       </div>

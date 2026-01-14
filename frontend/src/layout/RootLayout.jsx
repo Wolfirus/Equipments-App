@@ -7,6 +7,8 @@ export default function RootLayout() {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
 
+  const goDashboard = () => navigate("/equipment"); // ✅ pas /app
+
   return (
     <div className="min-h-screen bg-gray-50">
       <nav className="sticky top-0 z-50 bg-white/90 backdrop-blur border-b border-gray-200">
@@ -23,14 +25,18 @@ export default function RootLayout() {
             </Link>
 
             <div className="hidden md:flex items-center gap-4">
-              <Link className="text-sm text-slate-600 hover:text-slate-900" to="/about">À propos</Link>
-              <Link className="text-sm text-slate-600 hover:text-slate-900" to="/contact">Contact</Link>
+              <Link className="text-sm text-slate-600 hover:text-slate-900" to="/about">
+                À propos
+              </Link>
+              <Link className="text-sm text-slate-600 hover:text-slate-900" to="/contact">
+                Contact
+              </Link>
 
               {user ? (
                 <>
                   <button
                     className="text-sm px-4 py-2 rounded-lg bg-slate-900 text-white hover:opacity-90"
-                    onClick={() => navigate("/app")}
+                    onClick={goDashboard}
                   >
                     Dashboard
                   </button>
@@ -67,17 +73,25 @@ export default function RootLayout() {
               onClick={() => setOpen((v) => !v)}
               aria-label="Menu"
             >
-              <i className="ni ni-bullet-list-67" />
+              ☰
             </button>
           </div>
 
           {open && (
             <div className="md:hidden pb-4">
               <div className="flex flex-col gap-2">
-                <Link className="text-sm px-3 py-2 rounded-lg hover:bg-gray-50" to="/about" onClick={() => setOpen(false)}>
+                <Link
+                  className="text-sm px-3 py-2 rounded-lg hover:bg-gray-50"
+                  to="/about"
+                  onClick={() => setOpen(false)}
+                >
                   À propos
                 </Link>
-                <Link className="text-sm px-3 py-2 rounded-lg hover:bg-gray-50" to="/contact" onClick={() => setOpen(false)}>
+                <Link
+                  className="text-sm px-3 py-2 rounded-lg hover:bg-gray-50"
+                  to="/contact"
+                  onClick={() => setOpen(false)}
+                >
                   Contact
                 </Link>
 
@@ -85,19 +99,44 @@ export default function RootLayout() {
 
                 {user ? (
                   <>
-                    <button className="text-sm px-3 py-2 rounded-lg bg-slate-900 text-white" onClick={() => { setOpen(false); navigate("/app"); }}>
+                    <button
+                      className="text-sm px-3 py-2 rounded-lg bg-slate-900 text-white"
+                      onClick={() => {
+                        setOpen(false);
+                        goDashboard();
+                      }}
+                    >
                       Dashboard
                     </button>
-                    <button className="text-sm px-3 py-2 rounded-lg border border-gray-200 bg-white" onClick={() => { setOpen(false); logout(); navigate("/"); }}>
+                    <button
+                      className="text-sm px-3 py-2 rounded-lg border border-gray-200 bg-white"
+                      onClick={() => {
+                        setOpen(false);
+                        logout();
+                        navigate("/");
+                      }}
+                    >
                       Déconnexion
                     </button>
                   </>
                 ) : (
                   <>
-                    <button className="text-sm px-3 py-2 rounded-lg border border-gray-200 bg-white" onClick={() => { setOpen(false); navigate("/login"); }}>
+                    <button
+                      className="text-sm px-3 py-2 rounded-lg border border-gray-200 bg-white"
+                      onClick={() => {
+                        setOpen(false);
+                        navigate("/login");
+                      }}
+                    >
                       Connexion
                     </button>
-                    <button className="text-sm px-3 py-2 rounded-lg bg-slate-900 text-white" onClick={() => { setOpen(false); navigate("/register"); }}>
+                    <button
+                      className="text-sm px-3 py-2 rounded-lg bg-slate-900 text-white"
+                      onClick={() => {
+                        setOpen(false);
+                        navigate("/register");
+                      }}
+                    >
                       Inscription
                     </button>
                   </>

@@ -1,41 +1,53 @@
-import React, { useEffect, useState } from "react";
-import { useNavigate, useSearchParams, useParams } from "react-router-dom";
+import React, { useEffect, useMemo, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { reservationAPI, equipmentAPI } from "../services/api";
+
+const emptyForm = {
+  equipment_id: "",
+  start_date: "",
+  end_date: "",
+  quantity: 1,
+  purpose: "",
+  notes: "",
+};
 
 export default function ReservationManagement() {
   const navigate = useNavigate();
-  const { id } = useParams(); // keep if you later create /reservations/:id
   const [searchParams] = useSearchParams();
   const prefillEquipment = searchParams.get("equipment") || "";
 
   const [reservations, setReservations] = useState([]);
   const [equipment, setEquipment] = useState([]);
+
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
 
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState({
-    equipment_id: prefillEquipment,
-    start_date: "",
-    end_date: "",
-    quantity: 1,
-    purpose: "",
-    notes: "",
-  });
+  const [form, setForm] = useState(emptyForm);
 
   async function load() {
     setLoading(true);
     setErr("");
     try {
-      const res = await reservationAPI.getReservations({ page: 1, limit: 50 });
-      const list = res?.data?.reservations || res?.reservations || res?.data || [];
-      setReservations(Array.isArray(list) ? list : []);
+      // ✅ Mes réservations (backend: /reservations/me)
+      const myData = await reservationAPI.me({ page: 1, limit: 50 });
+      const myList = Array.isArray(myData)
+        ? myData
+        : Array.isArray(myData?.reservations)
+        ? myData.reservations
+        : [];
+      setReservations(myList);
 
-      const eq = await equipmentAPI.getEquipment({ page: 1, limit: 200 });
-      const eqlist = eq?.data?.equipment || eq?.equipment || eq?.data || [];
-      setEquipment(Array.isArray(eqlist) ? eqlist : []);
+      // ✅ Liste équipements (backend: /equipment)
+      const eqData = await equipmentAPI.list({ page: 1, limit: 200 });
+      const eqList = Array.isArray(eqData)
+        ? eqData
+        : Array.isArray(eqData?.equipment)
+        ? eqData.equipment
+        : [];
+      setEquipment(eqList);
     } catch (e) {
-      setErr(e.message || "Erreur");
+      setErr(e.message || "Erreur chargement");
     } finally {
       setLoading(false);
     }
@@ -43,6 +55,7 @@ export default function ReservationManagement() {
 
   useEffect(() => {
     load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -52,21 +65,31 @@ export default function ReservationManagement() {
     }
   }, [prefillEquipment]);
 
+  const equipmentOptions = useMemo(() => {
+    // optionnel: filtrer seulement available
+    return equipment;
+  }, [equipment]);
+
   async function create(e) {
     e.preventDefault();
     setLoading(true);
     setErr("");
+
     try {
-      await reservationAPI.createReservation(form);
+      // ✅ Important: backend exige equipment_id, start_date, end_date, purpose
+      const payload = {
+        equipment_id: form.equipment_id,
+        start_date: form.start_date,
+        end_date: form.end_date,
+        quantity: Number(form.quantity || 1),
+        purpose: (form.purpose || "").trim(),
+        notes: (form.notes || "").trim(),
+      };
+
+      await reservationAPI.create(payload);
+
       setOpen(false);
-      setForm({
-        equipment_id: "",
-        start_date: "",
-        end_date: "",
-        quantity: 1,
-        purpose: "",
-        notes: "",
-      });
+      setForm(emptyForm);
       await load();
       navigate("/reservations", { replace: true });
     } catch (e2) {
@@ -81,7 +104,7 @@ export default function ReservationManagement() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold text-slate-900">Réservations</h1>
-          <p className="text-sm text-slate-600">
+          <p className="text-sm text-slate-600 mt-1">
             Créer et consulter vos réservations.
           </p>
         </div>
@@ -90,12 +113,17 @@ export default function ReservationManagement() {
           <button
             className="px-4 py-2 rounded-lg bg-white border border-gray-200 hover:bg-gray-50 text-sm"
             onClick={load}
+            disabled={loading}
           >
             Rafraîchir
           </button>
+
           <button
             className="px-4 py-2 rounded-lg bg-slate-900 text-white hover:opacity-90 text-sm"
-            onClick={() => setOpen(true)}
+            onClick={() => {
+              setForm((p) => ({ ...emptyForm, equipment_id: prefillEquipment || "" }));
+              setOpen(true);
+            }}
           >
             + Nouvelle réservation
           </button>
@@ -108,12 +136,11 @@ export default function ReservationManagement() {
         </div>
       )}
 
+      {/* Liste réservations */}
       <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
         <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-          <div className="font-semibold text-slate-900">Liste</div>
-          <div className="text-xs text-slate-500">
-            {reservations.length} réservation(s)
-          </div>
+          <div className="font-semibold text-slate-900">Mes réservations</div>
+          <div className="text-xs text-slate-500">{reservations.length} élément(s)</div>
         </div>
 
         {loading ? (
@@ -123,51 +150,32 @@ export default function ReservationManagement() {
             <table className="w-full text-sm">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left font-semibold text-slate-700">
-                    Équipement
-                  </th>
-                  <th className="px-6 py-3 text-left font-semibold text-slate-700">
-                    Période
-                  </th>
-                  <th className="px-6 py-3 text-left font-semibold text-slate-700">
-                    Statut
-                  </th>
-                  <th className="px-6 py-3 text-right font-semibold text-slate-700">
-                    Actions
-                  </th>
+                  <th className="px-6 py-3 text-left font-semibold text-slate-700">Équipement</th>
+                  <th className="px-6 py-3 text-left font-semibold text-slate-700">Période</th>
+                  <th className="px-6 py-3 text-left font-semibold text-slate-700">Quantité</th>
+                  <th className="px-6 py-3 text-left font-semibold text-slate-700">Statut</th>
                 </tr>
               </thead>
               <tbody>
-                {reservations.map((r) => (
-                  <tr key={r._id} className="border-t">
-                    <td className="px-6 py-4 text-slate-900 font-medium">
-                      {r.equipment_id?.name ||
-                        r.equipment?.name ||
-                        r.equipment_name ||
-                        "—"}
-                    </td>
-                    <td className="px-6 py-4 text-slate-600">
-                      {r.start_date
-                        ? new Date(r.start_date).toLocaleDateString("fr-FR")
-                        : "—"}{" "}
-                      →{" "}
-                      {r.end_date
-                        ? new Date(r.end_date).toLocaleDateString("fr-FR")
-                        : "—"}
-                    </td>
-                    <td className="px-6 py-4 text-slate-600">
-                      {r.status || "—"}
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <button
-                        className="px-3 py-2 rounded-lg border border-gray-200 hover:bg-gray-50"
-                        onClick={() => navigate(`/reservations/${r._id}`)}
-                      >
-                        Détails
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                {reservations.map((r) => {
+                  const eqName =
+                    r.equipment_id?.name ||
+                    r.equipment?.name ||
+                    r.equipment_name ||
+                    "—";
+
+                  return (
+                    <tr key={r._id} className="border-t">
+                      <td className="px-6 py-4 font-medium text-slate-900">{eqName}</td>
+                      <td className="px-6 py-4 text-slate-600">
+                        {r.start_date ? new Date(r.start_date).toLocaleDateString("fr-FR") : "—"} →{" "}
+                        {r.end_date ? new Date(r.end_date).toLocaleDateString("fr-FR") : "—"}
+                      </td>
+                      <td className="px-6 py-4 text-slate-600">{r.quantity ?? 1}</td>
+                      <td className="px-6 py-4 text-slate-600">{r.status || "—"}</td>
+                    </tr>
+                  );
+                })}
 
                 {!reservations.length && (
                   <tr className="border-t">
@@ -182,14 +190,12 @@ export default function ReservationManagement() {
         )}
       </div>
 
-      {/* Modal */}
+      {/* Modal création */}
       {open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden">
             <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-              <div className="font-semibold text-slate-900">
-                Nouvelle réservation
-              </div>
+              <div className="font-semibold text-slate-900">Nouvelle réservation</div>
               <button
                 className="w-10 h-10 rounded-lg border border-gray-200"
                 onClick={() => setOpen(false)}
@@ -200,21 +206,17 @@ export default function ReservationManagement() {
 
             <form className="p-6 space-y-4" onSubmit={create}>
               <div>
-                <label className="text-xs font-semibold text-slate-700">
-                  Équipement
-                </label>
+                <label className="text-xs font-semibold text-slate-700">Équipement</label>
                 <select
                   className="mt-1 w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none"
                   value={form.equipment_id}
-                  onChange={(e) =>
-                    setForm((p) => ({ ...p, equipment_id: e.target.value }))
-                  }
+                  onChange={(e) => setForm((p) => ({ ...p, equipment_id: e.target.value }))}
                   required
                 >
-                  <option value="">Sélectionnez</option>
-                  {equipment.map((eq) => (
-                    <option key={eq._id} value={eq._id}>
-                      {eq.name}
+                  <option value="">—</option>
+                  {equipmentOptions.map((x) => (
+                    <option key={x._id} value={x._id}>
+                      {x.name}
                     </option>
                   ))}
                 </select>
@@ -222,29 +224,38 @@ export default function ReservationManagement() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-semibold text-slate-700">
-                    Date début
-                  </label>
+                  <label className="text-xs font-semibold text-slate-700">Date début</label>
                   <input
-                    className="mt-1 w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none"
                     type="date"
+                    className="mt-1 w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none"
                     value={form.start_date}
-                    onChange={(e) =>
-                      setForm((p) => ({ ...p, start_date: e.target.value }))
-                    }
+                    onChange={(e) => setForm((p) => ({ ...p, start_date: e.target.value }))}
                     required
                   />
                 </div>
+
                 <div>
-                  <label className="text-xs font-semibold text-slate-700">
-                    Date fin
-                  </label>
+                  <label className="text-xs font-semibold text-slate-700">Date fin</label>
                   <input
-                    className="mt-1 w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none"
                     type="date"
+                    className="mt-1 w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none"
                     value={form.end_date}
+                    onChange={(e) => setForm((p) => ({ ...p, end_date: e.target.value }))}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-semibold text-slate-700">Quantité</label>
+                  <input
+                    type="number"
+                    min={1}
+                    className="mt-1 w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none"
+                    value={form.quantity}
                     onChange={(e) =>
-                      setForm((p) => ({ ...p, end_date: e.target.value }))
+                      setForm((p) => ({ ...p, quantity: Number(e.target.value) }))
                     }
                     required
                   />
@@ -252,32 +263,12 @@ export default function ReservationManagement() {
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-slate-700">
-                  Quantité
-                </label>
-                <input
-                  className="mt-1 w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none"
-                  type="number"
-                  min={1}
-                  value={form.quantity}
-                  onChange={(e) =>
-                    setForm((p) => ({ ...p, quantity: Number(e.target.value) }))
-                  }
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="text-xs font-semibold text-slate-700">
-                  Objectif
-                </label>
+                <label className="text-xs font-semibold text-slate-700">Motif</label>
                 <textarea
                   className="mt-1 w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none"
                   rows={3}
                   value={form.purpose}
-                  onChange={(e) =>
-                    setForm((p) => ({ ...p, purpose: e.target.value }))
-                  }
+                  onChange={(e) => setForm((p) => ({ ...p, purpose: e.target.value }))}
                   required
                 />
               </div>
@@ -288,11 +279,9 @@ export default function ReservationManagement() {
                 </label>
                 <textarea
                   className="mt-1 w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none"
-                  rows={2}
+                  rows={3}
                   value={form.notes}
-                  onChange={(e) =>
-                    setForm((p) => ({ ...p, notes: e.target.value }))
-                  }
+                  onChange={(e) => setForm((p) => ({ ...p, notes: e.target.value }))}
                 />
               </div>
 
@@ -305,7 +294,7 @@ export default function ReservationManagement() {
                   Annuler
                 </button>
                 <button
-                  className="px-4 py-2 rounded-lg bg-slate-900 text-white hover:opacity-90 text-sm"
+                  className="px-4 py-2 rounded-lg bg-slate-900 text-white hover:opacity-90 text-sm disabled:opacity-60"
                   disabled={loading}
                 >
                   {loading ? "Création..." : "Créer"}

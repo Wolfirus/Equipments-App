@@ -1,14 +1,28 @@
+// middleware/requireRole.js
 module.exports = (...allowedRoles) => {
+  // normaliser les rôles autorisés une seule fois
+  const allowed = allowedRoles.map((r) => String(r).toLowerCase());
+
   return (req, res, next) => {
-    const role = (req.user?.role || "").toLowerCase();
-    const ok = allowedRoles.map(r => r.toLowerCase()).includes(role);
+    // ✅ Non authentifié
+    if (!req.user || !req.user.role) {
+      return res.status(401).json({
+        success: false,
+        message: "Non authentifié",
+      });
+    }
+
+    // ✅ Case-insensitive
+    const role = String(req.user.role).toLowerCase();
+    const ok = allowed.includes(role);
 
     if (!ok) {
       return res.status(403).json({
         success: false,
-        message: "Accès refusé",
+        message: "Accès refusé: permissions insuffisantes",
       });
     }
-    next();
+
+    return next();
   };
 };

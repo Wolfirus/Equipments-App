@@ -2,19 +2,10 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { equipmentAPI } from "../services/api";
 
-const DEFAULT_CATEGORIES = [
-  "Matériels de bureau",
-  "Imprimantes",
-  "PC",
-  "Écrans",
-  "Réseau",
-  "Accessoires",
-];
-
 const emptyForm = {
   name: "",
   description: "",
-  category: "",
+  category: "", // on stocke un id (recommandé)
   status: "available",
   quantity: 1,
   image_url: "",
@@ -22,7 +13,7 @@ const emptyForm = {
 
 export default function AdminEquipments() {
   const { user } = useAuth();
-  const isAdmin = user?.role === "admin";
+  const isManager = user?.role === "admin" || user?.role === "supervisor";
 
   const [items, setItems] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -39,48 +30,38 @@ export default function AdminEquipments() {
   const load = async () => {
     setLoading(true);
     setErr("");
-
     try {
-      // ===== CATEGORIES =====
-      const catsRes = await equipmentAPI.getCategories();
-      if (!catsRes.success) {
-        // si backend categories plante -> fallback
-        setCategories(DEFAULT_CATEGORIES);
-      } else {
-        const catList =
-          catsRes?.data?.categories ||
-          catsRes?.data ||
-          [];
+      // ✅ categories(): retourne directement data
+      // Selon ton backend, ça peut être: Array, ou { categories: [...] }
+      const catsData = await equipmentAPI.categories();
+      const catList = Array.isArray(catsData)
+        ? catsData
+        : Array.isArray(catsData?.categories)
+        ? catsData.categories
+        : [];
 
-        const normalized = Array.isArray(catList) ? catList : [];
-        setCategories(normalized.length ? normalized : DEFAULT_CATEGORIES);
-      }
+      setCategories(catList);
 
-      // ===== EQUIPMENT =====
-      const eqRes = await equipmentAPI.getEquipment({ page: 1, limit: 200 });
-      if (!eqRes.success) {
-        setErr(eqRes.error || "Erreur lors de la récupération des équipements");
-        setItems([]);
-      } else {
-        const list =
-          eqRes?.data?.equipment ||
-          eqRes?.data?.data ||
-          eqRes?.data ||
-          [];
-        setItems(Array.isArray(list) ? list : []);
-      }
+      // ✅ list(): retourne data (souvent { equipment, pagination, ... })
+      const eqData = await equipmentAPI.list({ page: 1, limit: 200 });
+      const list = Array.isArray(eqData)
+        ? eqData
+        : Array.isArray(eqData?.equipment)
+        ? eqData.equipment
+        : [];
+
+      setItems(list);
     } catch (e) {
-      setErr(e?.message || "Erreur lors de la récupération des équipements");
-      setItems([]);
+      setErr(e.message || "Erreur chargement équipements");
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    if (isAdmin) load();
+    if (isManager) load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAdmin]);
+  }, [isManager]);
 
   const filtered = useMemo(() => {
     const s = q.trim().toLowerCase();
@@ -97,14 +78,18 @@ export default function AdminEquipments() {
   const openEdit = (item) => {
     setEditId(item._id);
 
-    const qte = Number(item.total_quantity ?? item.quantity ?? 1) || 1;
+    // ✅ category stockée en id si possible
+    const catValue =
+      item.category?._id ||
+      item.category_id?._id ||
+      (typeof item.category === "string" ? item.category : "");
 
     setForm({
       name: item.name || "",
       description: item.description || "",
-      category: item.category?.name || item.category || "",
+      category: catValue || "",
       status: item.status || "available",
-      quantity: qte,
+      quantity: Number(item.quantity || 1),
       image_url: item.image_url || item.image || "",
     });
 
@@ -117,26 +102,19 @@ export default function AdminEquipments() {
     setErr("");
 
     try {
-      const totalQty = Number(form.quantity || 1);
-
-      // ✅ Ton backend veut total_quantity + available_quantity
       const payload = {
         name: form.name,
         description: form.description,
-        category: form.category,
+        category: form.category || null, // id recommandé
         status: form.status,
-        total_quantity: totalQty,
-        available_quantity: form.status === "retired" ? 0 : totalQty,
+        quantity: Number(form.quantity || 1),
         image_url: form.image_url,
       };
 
-      let res;
-      if (editId) res = await equipmentAPI.update(editId, payload);
-      else res = await equipmentAPI.create(payload);
-
-      if (!res.success) {
-        setErr(res.error || "Erreur sauvegarde");
-        return;
+      if (editId) {
+        await equipmentAPI.update(editId, payload);
+      } else {
+        await equipmentAPI.create(payload);
       }
 
       setOpen(false);
@@ -144,7 +122,7 @@ export default function AdminEquipments() {
       setEditId(null);
       await load();
     } catch (e2) {
-      setErr(e2?.message || "Erreur sauvegarde");
+      setErr(e2.message || "Erreur sauvegarde");
     } finally {
       setSaving(false);
     }
@@ -152,18 +130,20 @@ export default function AdminEquipments() {
 
   const remove = async (id) => {
     if (!window.confirm("Supprimer cet équipement ?")) return;
-    const res = await equipmentAPI.remove(id);
-    if (!res.success) {
-      alert(res.error || "Erreur suppression");
-      return;
+    try {
+      await equipmentAPI.remove(id);
+      setItems((prev) => prev.filter((x) => x._id !== id));
+    } catch (e) {
+      alert(e.message || "Erreur suppression");
     }
-    setItems((prev) => prev.filter((x) => x._id !== id));
   };
 
-  if (!isAdmin) {
+  if (!isManager) {
     return (
       <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
-        <div className="font-semibold text-slate-900">Accès administrateur requis.</div>
+        <div className="font-semibold text-slate-900">
+          Accès administrateur/superviseur requis.
+        </div>
       </div>
     );
   }
@@ -172,8 +152,12 @@ export default function AdminEquipments() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Gestion des équipements</h1>
-          <p className="text-sm text-slate-600 mt-1">Créer, modifier, supprimer les équipements.</p>
+          <h1 className="text-2xl font-semibold text-slate-900">
+            Gestion des équipements
+          </h1>
+          <p className="text-sm text-slate-600 mt-1">
+            Créer, modifier, supprimer les équipements.
+          </p>
         </div>
 
         <div className="flex gap-2">
@@ -229,33 +213,32 @@ export default function AdminEquipments() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((x) => {
-                  const qty = x.total_quantity ?? x.quantity ?? "—";
-                  return (
-                    <tr key={x._id} className="border-t">
-                      <td className="px-6 py-4 font-medium text-slate-900">{x.name || "—"}</td>
-                      <td className="px-6 py-4 text-slate-600">{x.category?.name || x.category || "—"}</td>
-                      <td className="px-6 py-4 text-slate-600">{x.status || "—"}</td>
-                      <td className="px-6 py-4 text-slate-600">{qty}</td>
-                      <td className="px-6 py-4 text-right">
-                        <div className="inline-flex gap-2">
-                          <button
-                            className="px-3 py-2 rounded-lg border border-gray-200 hover:bg-gray-50"
-                            onClick={() => openEdit(x)}
-                          >
-                            Modifier
-                          </button>
-                          <button
-                            className="px-3 py-2 rounded-lg bg-red-600 text-white hover:opacity-90"
-                            onClick={() => remove(x._id)}
-                          >
-                            Supprimer
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
+                {filtered.map((x) => (
+                  <tr key={x._id} className="border-t">
+                    <td className="px-6 py-4 font-medium text-slate-900">{x.name || "—"}</td>
+                    <td className="px-6 py-4 text-slate-600">
+                      {x.category?.name || x.category_name || "—"}
+                    </td>
+                    <td className="px-6 py-4 text-slate-600">{x.status || "—"}</td>
+                    <td className="px-6 py-4 text-slate-600">{x.quantity ?? "—"}</td>
+                    <td className="px-6 py-4 text-right">
+                      <div className="inline-flex gap-2">
+                        <button
+                          className="px-3 py-2 rounded-lg border border-gray-200 hover:bg-gray-50"
+                          onClick={() => openEdit(x)}
+                        >
+                          Modifier
+                        </button>
+                        <button
+                          className="px-3 py-2 rounded-lg bg-red-600 text-white hover:opacity-90"
+                          onClick={() => remove(x._id)}
+                        >
+                          Supprimer
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
 
                 {!filtered.length && (
                   <tr className="border-t">
@@ -270,6 +253,7 @@ export default function AdminEquipments() {
         )}
       </div>
 
+      {/* Modal create/edit */}
       {open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden">
@@ -280,7 +264,6 @@ export default function AdminEquipments() {
               <button
                 className="w-10 h-10 rounded-lg border border-gray-200"
                 onClick={() => setOpen(false)}
-                type="button"
               >
                 ✕
               </button>
@@ -314,14 +297,17 @@ export default function AdminEquipments() {
                     className="mt-1 w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none"
                     value={form.category}
                     onChange={(e) => setForm((p) => ({ ...p, category: e.target.value }))}
-                    required
                   >
                     <option value="">—</option>
                     {categories.map((c) =>
                       typeof c === "string" ? (
-                        <option key={c} value={c}>{c}</option>
+                        <option key={c} value={c}>
+                          {c}
+                        </option>
                       ) : (
-                        <option key={c._id} value={c.name || c._id}>{c.name || c._id}</option>
+                        <option key={c._id} value={c._id}>
+                          {c.name || c._id}
+                        </option>
                       )
                     )}
                   </select>
@@ -336,21 +322,20 @@ export default function AdminEquipments() {
                   >
                     <option value="available">Disponible</option>
                     <option value="maintenance">Maintenance</option>
-                    <option value="retired">Retiré</option>
+                    <option value="unavailable">Indisponible</option>
                   </select>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-semibold text-slate-700">Quantité totale</label>
+                  <label className="text-xs font-semibold text-slate-700">Quantité</label>
                   <input
                     type="number"
-                    min={1}
+                    min={0}
                     className="mt-1 w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none"
                     value={form.quantity}
                     onChange={(e) => setForm((p) => ({ ...p, quantity: Number(e.target.value) }))}
-                    required
                   />
                 </div>
                 <div>

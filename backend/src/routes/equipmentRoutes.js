@@ -1,130 +1,168 @@
 const express = require("express");
 const router = express.Router();
 
-const Equipment = require("../models/Equipment");
 const auth = require("../middleware/auth");
 const requireRole = require("../middleware/requireRole");
 
-/**
- * ✅ GET /api/equipment
- * user: voir (selon visibilité si tu veux)
- * supervisor/admin: voir TOUT (comme admin)
- */
+const Equipment = require("../models/Equipment");
+const Reservation = require("../models/Reservation");
+
+function overlapQuery(start, end) {
+  return {
+    start_date: { $lte: end },
+    end_date: { $gte: start },
+  };
+}
+
+// GET /api/equipment (list)
 router.get("/", auth, async (req, res) => {
   try {
-    const role = (req.user?.role || "").toLowerCase();
+    const { page = 1, limit = 24, search, category, status, available } = req.query;
+    const skip = (parseInt(page, 10) - 1) * parseInt(limit, 10);
 
-    const {
-      search = "",
-      category = "",
-      status = "",
-      includeUnavailable = "true",
-      page = "1",
-      limit = "12",
-    } = req.query;
+    const q = {};
+    if (search) q.name = { $regex: String(search), $options: "i" };
+    if (category) q.category = category; // (si Equipment.category est string)
+    if (status) q.status = status;
 
-    const query = {};
-
-    if (search.trim()) query.name = { $regex: search.trim(), $options: "i" };
-    if (category.trim()) query.category = category.trim();
-    if (status.trim()) query.status = status.trim();
-
-    // includeUnavailable=false => seulement dispo
-    if (includeUnavailable === "false") {
-      query.available_quantity = { $gt: 0 };
+    if (available === "true") {
+      q.status = "available";
+      q.available_quantity = { $gt: 0 };
     }
 
-    /**
-     * ✅ IMPORTANT
-     * Si tu avais une logique "visibility" ou "department" qui cachait aux non-admin,
-     * on autorise supervisor comme admin => pas de filtre.
-     */
-    if (role !== "admin" && role !== "supervisor") {
-      // si tu veux limiter user seulement:
-      // ex: public only (si ton schema contient visibility.is_public)
-      // sinon supprime tout ce bloc
-      query.$or = [
-        { "visibility.is_public": true },
-        { "visibility.restricted_to_departments": req.user.department },
-      ];
-    }
+    const equipment = await Equipment.find(q)
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit, 10));
 
-    const pageNum = Number(page) || 1;
-    const limitNum = Number(limit) || 12;
-    const skip = (pageNum - 1) * limitNum;
+    const total = await Equipment.countDocuments(q);
 
-    const total = await Equipment.countDocuments(query);
-    const equipment = await Equipment.find(query).skip(skip).limit(limitNum);
-
-    return res.json({
+    res.json({
       success: true,
       data: {
         equipment,
-        pagination: {
-          total,
-          pages: Math.ceil(total / limitNum),
-          page: pageNum,
-          limit: limitNum,
-        },
+        pagination: { current: +page, pages: Math.ceil(total / +limit), total, limit: +limit },
       },
     });
-  } catch (err) {
-    console.error("GET /api/equipment ERROR:", err);
-    return res.status(500).json({ success: false, message: "Erreur serveur", error: err.message });
+  } catch (e) {
+    res.status(500).json({ success: false, message: "Erreur liste équipements", error: e.message });
   }
 });
 
-/**
- * GET /api/equipment/:id
- */
+// GET /api/equipment/:id
 router.get("/:id", auth, async (req, res) => {
   try {
-    const equipment = await Equipment.findById(req.params.id);
-    if (!equipment) return res.status(404).json({ success: false, message: "Équipement introuvable" });
-    return res.json({ success: true, data: { equipment } });
-  } catch (err) {
-    return res.status(500).json({ success: false, message: "Erreur serveur", error: err.message });
+    const eq = await Equipment.findById(req.params.id);
+    if (!eq) return res.status(404).json({ success: false, message: "Équipement introuvable" });
+    res.json({ success: true, data: eq });
+  } catch (e) {
+    res.status(500).json({ success: false, message: "Erreur équipement", error: e.message });
   }
 });
 
-/**
- * ✅ supervisor/admin peuvent CRÉER
- */
-router.post("/", auth, requireRole("admin", "supervisor"), async (req, res) => {
+// ✅ GET /api/equipment/:id/availability?start=YYYY-MM-DD&end=YYYY-MM-DD
+router.get("/:id/availability", auth, async (req, res) => {
   try {
-    const created = await Equipment.create(req.body);
-    return res.status(201).json({ success: true, data: { equipment: created } });
-  } catch (err) {
-    return res.status(400).json({ success: false, message: err.message });
-  }
-});
+    const { start, end } = req.query;
+    if (!start || !end) {
+      return res.status(400).json({ success: false, message: "start et end requis" });
+    }
 
-/**
- * ✅ supervisor/admin peuvent MODIFIER
- */
-router.patch("/:id", auth, requireRole("admin", "supervisor"), async (req, res) => {
-  try {
-    const updated = await Equipment.findByIdAndUpdate(req.params.id, req.body, {
-      new: true,
-      runValidators: true,
+    const startDate = new Date(start);
+    const endDate = new Date(end);
+    if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime()) || startDate > endDate) {
+      return res.status(400).json({ success: false, message: "Période invalide" });
+    }
+
+    const eq = await Equipment.findById(req.params.id);
+    if (!eq) return res.status(404).json({ success: false, message: "Équipement introuvable" });
+
+    const overlaps = await Reservation.find({
+      equipment_id: eq._id,
+      status: { $in: ["approved", "active"] },
+      ...overlapQuery(startDate, endDate),
+    }).select("quantity");
+
+    const reserved = overlaps.reduce((s, r) => s + (r.quantity || 0), 0);
+    const availableForPeriod = Math.max(0, (eq.total_quantity || 0) - reserved);
+
+    res.json({
+      success: true,
+      data: {
+        equipment_id: eq._id,
+        start: startDate,
+        end: endDate,
+        total_quantity: eq.total_quantity || 0,
+        reserved_quantity: reserved,
+        available_quantity: availableForPeriod,
+        status: eq.status,
+      },
     });
-    if (!updated) return res.status(404).json({ success: false, message: "Équipement introuvable" });
-    return res.json({ success: true, data: { equipment: updated } });
-  } catch (err) {
-    return res.status(400).json({ success: false, message: err.message });
+  } catch (e) {
+    res.status(500).json({ success: false, message: "Erreur availability", error: e.message });
   }
 });
 
-/**
- * ✅ supervisor/admin peuvent SUPPRIMER
- */
-router.delete("/:id", auth, requireRole("admin", "supervisor"), async (req, res) => {
+// POST /api/equipment (manager)
+router.post("/", auth, requireRole("supervisor", "admin"), async (req, res) => {
   try {
-    const deleted = await Equipment.findByIdAndDelete(req.params.id);
-    if (!deleted) return res.status(404).json({ success: false, message: "Équipement introuvable" });
-    return res.json({ success: true, message: "Équipement supprimé" });
-  } catch (err) {
-    return res.status(500).json({ success: false, message: "Erreur serveur", error: err.message });
+    const { name, description, category, status = "available", quantity = 1, image_url } = req.body;
+    if (!name) return res.status(400).json({ success: false, message: "Nom requis" });
+
+    const eq = await Equipment.create({
+      name,
+      description: description || "",
+      category: category || "",
+      status,
+      total_quantity: Number(quantity || 1),
+      available_quantity: Number(quantity || 1),
+      images: image_url ? [image_url] : [],
+    });
+
+    res.status(201).json({ success: true, data: eq });
+  } catch (e) {
+    res.status(500).json({ success: false, message: "Erreur création équipement", error: e.message });
+  }
+});
+
+// PUT /api/equipment/:id (manager)
+router.put("/:id", auth, requireRole("supervisor", "admin"), async (req, res) => {
+  try {
+    const { name, description, category, status, quantity, image_url } = req.body;
+
+    const updates = {};
+    if (name !== undefined) updates.name = name;
+    if (description !== undefined) updates.description = description;
+    if (category !== undefined) updates.category = category;
+    if (status !== undefined) updates.status = status;
+
+    if (quantity !== undefined) {
+      const q = Number(quantity);
+      updates.total_quantity = q;
+      // ✅ on resynchronise available_quantity “NOW” juste pour l’affichage,
+      // mais la vraie dispo reste par /availability
+      updates.available_quantity = Math.max(0, q);
+    }
+
+    if (image_url !== undefined) updates.images = image_url ? [image_url] : [];
+
+    const eq = await Equipment.findByIdAndUpdate(req.params.id, updates, { new: true });
+    if (!eq) return res.status(404).json({ success: false, message: "Équipement introuvable" });
+
+    res.json({ success: true, data: eq });
+  } catch (e) {
+    res.status(500).json({ success: false, message: "Erreur update équipement", error: e.message });
+  }
+});
+
+// DELETE /api/equipment/:id (manager)
+router.delete("/:id", auth, requireRole("supervisor", "admin"), async (req, res) => {
+  try {
+    const eq = await Equipment.findByIdAndDelete(req.params.id);
+    if (!eq) return res.status(404).json({ success: false, message: "Équipement introuvable" });
+    res.json({ success: true, message: "Équipement supprimé" });
+  } catch (e) {
+    res.status(500).json({ success: false, message: "Erreur suppression équipement", error: e.message });
   }
 });
 

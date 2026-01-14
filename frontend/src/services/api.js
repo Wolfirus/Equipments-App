@@ -1,11 +1,9 @@
-
-
 const API_BASE =
   (process.env.REACT_APP_API_URL || "").replace(/\/$/, "") ||
   "http://localhost:5000/api";
 
 function getToken() {
-  return localStorage.getItem("auth_token");
+  return localStorage.getItem("auth_token") || "";
 }
 
 function toQuery(params = {}) {
@@ -21,146 +19,193 @@ function toQuery(params = {}) {
 async function request(path, options = {}) {
   const token = getToken();
 
+  const headers = {
+    ...(options.headers || {}),
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+
+  const isFormData =
+    typeof FormData !== "undefined" && options.body instanceof FormData;
+
+  if (!isFormData) {
+    headers["Content-Type"] = headers["Content-Type"] || "application/json";
+  }
+
   const res = await fetch(`${API_BASE}${path}`, {
     ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...(options.headers || {}),
-    },
+    headers,
   });
 
   const isJson = res.headers.get("content-type")?.includes("application/json");
-  const data = isJson ? await res.json() : await res.text();
+  const payload = isJson ? await res.json() : await res.text();
 
   if (!res.ok) {
-    throw new Error(data?.message || "Request failed");
+    const msg = payload?.message || "Request failed";
+    throw new Error(msg);
   }
 
-  return data;
+  // backend standard: {success,message,data}
+  return payload?.data !== undefined ? payload.data : payload;
 }
 
 /* =========================
-   EQUIPMENT API
+   AUTH
 ========================= */
+export const authAPI = {
+  login: (payload) =>
+    request(`/auth/login`, { method: "POST", body: JSON.stringify(payload) }),
+  register: (payload) =>
+    request(`/auth/register`, { method: "POST", body: JSON.stringify(payload) }),
+};
+
+/* =========================
+   USERS
+========================= */
+export const usersAPI = {
+  me: () => request(`/users/me`),
+  updateMe: (payload) =>
+    request(`/users/me`, { method: "PATCH", body: JSON.stringify(payload) }),
+  changePassword: (payload) =>
+    request(`/users/me/password`, { method: "PATCH", body: JSON.stringify(payload) }),
+  uploadAvatar: (file) => {
+    const fd = new FormData();
+    fd.append("avatar", file);
+    return request(`/users/me/avatar`, { method: "PATCH", body: fd });
+  },
+
+  // admin
+  list: () => request(`/users`),
+  update: (id, payload) =>
+    request(`/users/${id}`, { method: "PATCH", body: JSON.stringify(payload) }),
+  setRole: (id, role) =>
+    request(`/users/${id}/role`, { method: "PATCH", body: JSON.stringify({ role }) }),
+  remove: (id) => request(`/users/${id}`, { method: "DELETE" }),
+};
+
+/* =========================
+   PROFILE
+========================= */
+export const profileAPI = {
+  // ✅ nouveaux noms
+  get: () => request(`/profile`),
+  update: (payload) =>
+    request(`/profile`, { method: "PUT", body: JSON.stringify(payload) }),
+  updatePreferences: (payload) =>
+    request(`/profile/preferences`, { method: "PUT", body: JSON.stringify(payload) }),
+  changePassword: (payload) =>
+    request(`/profile/password`, { method: "PUT", body: JSON.stringify(payload) }),
+  deleteAccount: () => request(`/profile`, { method: "DELETE" }),
+
+  // ✅ ALIAS (compatibilité ancien front)
+  getProfile: () => request(`/profile`),
+  updateProfile: (payload) =>
+    request(`/profile`, { method: "PUT", body: JSON.stringify(payload) }),
+  changeProfilePassword: (payload) =>
+    request(`/profile/password`, { method: "PUT", body: JSON.stringify(payload) }),
+};
+
 export const equipmentAPI = {
+  // ✅ nouveaux noms (recommandés)
   list: (params = {}) => request(`/equipment${toQuery(params)}`),
   get: (id) => request(`/equipment/${id}`),
+  availability: (id, params = {}) =>
+    request(`/equipment/${id}/availability${toQuery(params)}`),
 
   create: (payload) =>
-    request(`/equipment`, {
-      method: "POST",
-      body: JSON.stringify(payload),
-    }),
-
+    request(`/equipment`, { method: "POST", body: JSON.stringify(payload) }),
   update: (id, payload) =>
-    request(`/equipment/${id}`, {
-      method: "PUT", // ✅ matches backend
-      body: JSON.stringify(payload),
-    }),
+    request(`/equipment/${id}`, { method: "PUT", body: JSON.stringify(payload) }),
+  remove: (id) => request(`/equipment/${id}`, { method: "DELETE" }),
 
-  remove: (id) =>
-    request(`/equipment/${id}`, {
-      method: "DELETE",
-    }),
+  // categories
+  categories: () => request(`/categories`),
 
-  // backward compatibility
-  getEquipment: (params = {}) => request(`/equipment${toQuery(params)}`),
-  getEquipmentById: (id) => request(`/equipment/${id}`),
+  // ✅ ALIAS (compatibilité avec tes anciennes pages)
+  getEquipment: (idOrParams) => {
+    // ancien code parfois faisait getEquipment({page,limit})
+    if (typeof idOrParams === "object" && idOrParams !== null) {
+      return request(`/equipment${toQuery(idOrParams)}`);
+    }
+    return request(`/equipment/${idOrParams}`);
+  },
+
+  getAllEquipment: (params = {}) => request(`/equipment${toQuery(params)}`),
+  getAllEquipments: (params = {}) => request(`/equipment${toQuery(params)}`),
+
+  addEquipment: (payload) =>
+    request(`/equipment`, { method: "POST", body: JSON.stringify(payload) }),
+
+  updateEquipment: (id, payload) =>
+    request(`/equipment/${id}`, { method: "PUT", body: JSON.stringify(payload) }),
+
+  deleteEquipment: (id) => request(`/equipment/${id}`, { method: "DELETE" }),
+
   getCategories: () => request(`/categories`),
 };
 
 /* =========================
-   RESERVATION API
+   RESERVATIONS
 ========================= */
 export const reservationAPI = {
-  list: (params = {}) => request(`/reservations${toQuery(params)}`),
-  get: (id) => request(`/reservations/${id}`),
+  me: (params = {}) => request(`/reservations/me${toQuery(params)}`),
+  manage: (params = {}) => request(`/reservations/manage${toQuery(params)}`),
 
   create: (payload) =>
-    request(`/reservations`, {
-      method: "POST",
-      body: JSON.stringify(payload),
-    }),
+    request(`/reservations`, { method: "POST", body: JSON.stringify(payload) }),
 
-  update: (id, payload) =>
-    request(`/reservations/${id}`, {
-      method: "PUT",
-      body: JSON.stringify(payload),
-    }),
+  approve: (id) =>
+    request(`/reservations/${id}/approve`, { method: "PUT", body: JSON.stringify({}) }),
 
-  approve: (id, payload = {}) =>
-    request(`/reservations/${id}/approve`, {
-      method: "PUT",
-      body: JSON.stringify(payload),
-    }),
+  reject: (id, reason = "Demande refusée") =>
+    request(`/reservations/${id}/reject`, { method: "PUT", body: JSON.stringify({ reason }) }),
 
-  reject: (id, payload = {}) =>
-    request(`/reservations/${id}/reject`, {
-      method: "PUT",
-      body: JSON.stringify(payload),
-    }),
-
-  cancel: (id, payload = {}) =>
-    request(`/reservations/${id}`, {
-      method: "DELETE",
-      body: JSON.stringify(payload),
-    }),
-
-  // backward compatibility
-  getReservations: (params = {}) => request(`/reservations${toQuery(params)}`),
-  getReservationById: (id) => request(`/reservations/${id}`),
-  createReservation: (payload) =>
-    request(`/reservations`, {
-      method: "POST",
-      body: JSON.stringify(payload),
-    }),
-  updateReservation: (id, payload) =>
-    request(`/reservations/${id}`, {
-      method: "PUT",
-      body: JSON.stringify(payload),
-    }),
-  cancelReservation: (id, payload = {}) =>
-    request(`/reservations/${id}`, {
-      method: "DELETE",
-      body: JSON.stringify(payload),
-    }),
+  cancel: (id) => request(`/reservations/${id}`, { method: "DELETE" }),
 };
 
 /* =========================
-   PROFILE API
+   NOTIFICATIONS
 ========================= */
-export const profileAPI = {
-  getProfile: () => request(`/profile`),
-
-  updateProfile: (payload) =>
-    request(`/profile`, {
-      method: "PUT",
-      body: JSON.stringify(payload),
-    }),
-
-  updatePreferences: (payload) =>
-    request(`/profile/preferences`, {
-      method: "PUT",
-      body: JSON.stringify(payload),
-    }),
-
-  changePassword: (payload) =>
-    request(`/profile/password`, {
-      method: "PUT",
-      body: JSON.stringify(payload),
-    }),
-
-  deleteAccount: (payload) =>
-    request(`/profile`, {
-      method: "DELETE",
-      body: JSON.stringify(payload),
-    }),
+export const notificationsAPI = {
+  list: (params = {}) => request(`/notifications${toQuery(params)}`),
+  unread: (params = {}) => request(`/notifications/unread${toQuery(params)}`),
+  readAll: () =>
+    request(`/notifications/read-all`, { method: "PUT", body: JSON.stringify({}) }),
+  readOne: (id) =>
+    request(`/notifications/${id}/read`, { method: "PUT", body: JSON.stringify({}) }),
+  remove: (id) => request(`/notifications/${id}`, { method: "DELETE" }),
 };
 
-export default {
+/* =========================
+   MESSAGES
+========================= */
+export const messagesAPI = {
+  send: (payload) =>
+    request(`/messages`, { method: "POST", body: JSON.stringify(payload) }),
+  list: () => request(`/messages`),
+  remove: (id) => request(`/messages/${id}`, { method: "DELETE" }),
+};
+
+/* =========================
+   ADMIN
+========================= */
+export const adminAPI = {
+  stats: (params = {}) => request(`/admin/stats${toQuery(params)}`),
+};
+
+/**
+ * ✅ export default POUR COMPATIBILITÉ avec ton ancien code
+ * Si une page fait `import api from "../services/api"`
+ */
+const api = {
+  request,
+  authAPI,
+  usersAPI,
+  profileAPI,
   equipmentAPI,
   reservationAPI,
-  profileAPI,
-
+  notificationsAPI,
+  messagesAPI,
+  adminAPI,
 };
+
+export default api;

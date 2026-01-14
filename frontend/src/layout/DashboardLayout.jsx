@@ -1,80 +1,102 @@
-// src/layout/DashboardLayout.jsx
 import React from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
-const NavItem = ({ to, label, icon }) => {
-  const location = useLocation();
-  const active = location.pathname === to || location.pathname.startsWith(to + "/");
-
+const SideItem = ({ to, label, icon }) => {
   return (
     <li className="mt-1">
-      <Link
+      <NavLink
         to={to}
-        className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-semibold transition
-          ${active ? "bg-blue-50 text-blue-700" : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"}`}
+        className={({ isActive }) =>
+          `flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-semibold transition ${
+            isActive
+              ? "bg-blue-50 text-blue-700"
+              : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+          }`
+        }
+        end={to === "/"}
       >
         <span className="text-lg">{icon}</span>
         {label}
-      </Link>
+      </NavLink>
     </li>
   );
 };
 
-export default function DashboardLayout({ children }) {
-  const { user, logout } = useAuth();
-  const location = useLocation();
+export default function DashboardLayout() {
+  const { user, logout, unreadCount } = useAuth();
+  const navigate = useNavigate();
 
-  const role = user?.role || "guest";
+  const role = (user?.role || "").toLowerCase();
   const isAdmin = role === "admin";
   const isSupervisor = role === "supervisor";
-  const isUser = role === "user";
-  const canManage = isAdmin || isSupervisor; // ✅ gestion partagée
+  const isManager = isAdmin || isSupervisor;
 
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Sidebar */}
-      <aside className="fixed top-0 left-0 h-screen w-72 bg-white border-r border-gray-200 overflow-y-auto">
+      <aside className="fixed top-0 left-0 h-full w-72 bg-white border-r border-gray-200">
         <div className="p-5 border-b border-gray-200">
-          <div className="text-lg font-black text-slate-900">Équipements</div>
-          <div className="text-xs text-slate-500">Plateforme de réservation</div>
+          <Link to="/" className="block">
+            <div className="text-lg font-black text-slate-900">Équipements</div>
+            <div className="text-xs text-slate-500">Plateforme de réservation</div>
+          </Link>
         </div>
 
         <nav className="p-3">
           <ul>
-            {/* commun */}
-            <NavItem to="/" label="Accueil" icon="🏠" />
-            <NavItem to="/equipment" label="Catalogue" icon="🧰" />
-            <NavItem to="/profile" label="Profil" icon="👤" />
-
-            {/* user seulement */}
-            {isUser && <NavItem to="/reservations" label="Mes réservations" icon="📅" />}
-
-            {/* ✅ gestion admin + supervisor (mêmes pages) */}
-            {canManage && (
+            {/* ✅ MENU UTILISATEUR: affiché seulement pour role=user */}
+            {!isManager && (
               <>
-                <div className="mt-6 px-4 text-xs uppercase tracking-wider text-slate-400">
-                  Gestion
-                </div>
-                <NavItem to="/admin" label="Dashboard" icon="⚙️" />
-                <NavItem to="/admin/equipments" label="Équipements" icon="🛠️" />
-                <NavItem to="/admin/reservations" label="Réservations" icon="✅" />
-                <NavItem to="/admin/messages" label="Messages" icon="💬" />
+                <SideItem to="/equipment" label="Équipements" icon="🧰" />
+                <SideItem to="/reservations" label="Réservations" icon="📅" />
               </>
             )}
 
-            {/* infos (sans Site) */}
+            {/* ✅ Toujours visible */}
+            <SideItem to="/notifications" label="Notifications" icon="🔔" />
+            <SideItem to="/profile" label="Profil" icon="👤" />
+
             <div className="mt-6 px-4 text-xs uppercase tracking-wider text-slate-400">
               Informations
             </div>
-            <NavItem to="/about" label="À propos" icon="ℹ️" />
-            <NavItem to="/contact" label="Contact" icon="✉️" />
+            <SideItem to="/about" label="À propos" icon="ℹ️" />
+            <SideItem to="/contact" label="Contact" icon="✉️" />
+
+            {/* ✅ ADMINISTRATION: supervisor + admin */}
+            {isManager && (
+              <>
+                <div className="mt-6 px-4 text-xs uppercase tracking-wider text-slate-400">
+                  Administration
+                </div>
+
+                {/* ✅ Supervisor: on supprime "Dashboard"
+                    ✅ Admin: on garde la route /admin mais label devient "Gestion utilisateurs"
+                */}
+                {isAdmin && (
+                  <SideItem to="/admin" label="Gestion utilisateurs" icon="👥" />
+                )}
+
+                <SideItem
+                  to="/admin/equipments"
+                  label="Gestion équipements"
+                  icon="🛠️"
+                />
+                <SideItem
+                  to="/admin/reservations"
+                  label="Gestion réservations"
+                  icon="✅"
+                />
+                <SideItem to="/admin/messages" label="Messages" icon="💬" />
+              </>
+            )}
           </ul>
         </nav>
       </aside>
 
       {/* Main */}
-      <div className="pl-72 min-h-screen flex flex-col">
+      <div className="pl-72">
+        {/* Topbar */}
         <header className="sticky top-0 z-30 bg-white/80 backdrop-blur border-b border-gray-200">
           <div className="flex items-center justify-between px-6 py-4">
             <div>
@@ -82,38 +104,39 @@ export default function DashboardLayout({ children }) {
               <div className="text-lg font-bold text-slate-900">
                 {user ? user.name : "Invité"}
               </div>
-              <div className="text-[11px] text-slate-400">route: {location.pathname}</div>
             </div>
 
             <div className="flex items-center gap-3">
-              {user ? (
-                <button
-                  onClick={logout}
-                  className="px-4 py-2 rounded-lg bg-slate-900 text-white text-sm font-semibold hover:bg-slate-800"
-                >
-                  Déconnexion
-                </button>
-              ) : (
-                <>
-                  <Link
-                    to="/login"
-                    className="px-4 py-2 rounded-lg border border-gray-200 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-                  >
-                    Connexion
-                  </Link>
-                  <Link
-                    to="/register"
-                    className="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700"
-                  >
-                    Inscription
-                  </Link>
-                </>
-              )}
+              <button
+                className="relative px-3 py-2 rounded-lg border border-gray-200 bg-white hover:bg-gray-50"
+                onClick={() => navigate("/notifications")}
+                title="Notifications"
+              >
+                🔔
+                {unreadCount > 0 && (
+                  <span className="absolute -top-2 -right-2 text-xs bg-red-600 text-white rounded-full px-2 py-0.5">
+                    {unreadCount}
+                  </span>
+                )}
+              </button>
+
+              <button
+                onClick={() => {
+                  logout();
+                  navigate("/");
+                }}
+                className="px-4 py-2 rounded-lg bg-slate-900 text-white text-sm font-semibold hover:bg-slate-800"
+              >
+                Déconnexion
+              </button>
             </div>
           </div>
         </header>
 
-        <main className="flex-1 p-6 overflow-y-auto">{children}</main>
+        {/* Content */}
+        <main className="p-6">
+          <Outlet />
+        </main>
       </div>
     </div>
   );

@@ -9,26 +9,11 @@ const NotificationSchema = new mongoose.Schema(
       index: true,
     },
 
-    type: {
-      type: String,
-      required: true,
-      trim: true,
-      index: true,
-    },
+    type: { type: String, required: true, trim: true, index: true },
 
-    title: {
-      type: String,
-      required: true,
-      trim: true,
-      maxlength: 200,
-    },
+    title: { type: String, required: true, trim: true, maxlength: 200 },
 
-    message: {
-      type: String,
-      required: true,
-      trim: true,
-      maxlength: 1000,
-    },
+    message: { type: String, required: true, trim: true, maxlength: 1000 },
 
     priority: {
       type: String,
@@ -37,58 +22,36 @@ const NotificationSchema = new mongoose.Schema(
       index: true,
     },
 
-    is_read: {
+    /**
+     * ✅ Standard: read
+     * ✅ Compat: is_read (alias)
+     */
+    read: {
       type: Boolean,
       default: false,
       index: true,
+      alias: "is_read",
     },
 
-    read_at: {
-      type: Date,
-      default: null,
-    },
+    read_at: { type: Date, default: null },
 
-    action_required: {
-      type: Boolean,
-      default: false,
-    },
+    action_required: { type: Boolean, default: false },
 
-    action_url: {
-      type: String,
-      trim: true,
-      default: "",
-    },
+    action_url: { type: String, trim: true, default: "" },
 
-    action_text: {
-      type: String,
-      trim: true,
-      default: "",
-    },
+    action_text: { type: String, trim: true, default: "" },
 
     related_entity: {
-      type: {
-        type: String,
-        trim: true,
-        default: "",
-      },
-      id: {
-        type: mongoose.Schema.Types.ObjectId,
-        default: null,
-      },
-      model: {
-        type: String,
-        trim: true,
-        default: "",
-      },
+      type: { type: String, trim: true, default: "" },
+      id: { type: mongoose.Schema.Types.ObjectId, default: null },
+      model: { type: String, trim: true, default: "" },
     },
   },
-  { timestamps: true }
+  { timestamps: true, toJSON: { virtuals: true }, toObject: { virtuals: true } }
 );
 
-// ---------- Static helpers (USED BY reservationRoutes.js) ----------
-
+// ---------- Static helpers (utilisés par reservationRoutes.js) ----------
 NotificationSchema.statics.createNotification = async function (payload) {
-  // payload should include: user_id, type, title, message
   return this.create(payload);
 };
 
@@ -109,11 +72,7 @@ NotificationSchema.statics.reservationCreated = async function (
     action_required: true,
     action_url: `/reservations/${reservationId}`,
     action_text: "Voir la réservation",
-    related_entity: {
-      type: "reservation",
-      id: reservationId,
-      model: "Reservation",
-    },
+    related_entity: { type: "reservation", id: reservationId, model: "Reservation" },
   });
 };
 
@@ -131,11 +90,7 @@ NotificationSchema.statics.reservationApproved = async function (
     action_required: false,
     action_url: `/reservations/${reservationId}`,
     action_text: "Voir",
-    related_entity: {
-      type: "reservation",
-      id: reservationId,
-      model: "Reservation",
-    },
+    related_entity: { type: "reservation", id: reservationId, model: "Reservation" },
   });
 };
 
@@ -154,21 +109,15 @@ NotificationSchema.statics.reservationRejected = async function (
     action_required: false,
     action_url: `/reservations/${reservationId}`,
     action_text: "Voir",
-    related_entity: {
-      type: "reservation",
-      id: reservationId,
-      model: "Reservation",
-    },
+    related_entity: { type: "reservation", id: reservationId, model: "Reservation" },
   });
 };
 
 NotificationSchema.statics.reservationCancelled = async function (
   userId,
   reservationId,
-  equipmentIdOrName,
   reason = "Annulation"
 ) {
-  // equipmentIdOrName: you sometimes pass equipment._id; sometimes a name -> we accept both
   return this.create({
     user_id: userId,
     type: "reservation_cancelled",
@@ -178,17 +127,13 @@ NotificationSchema.statics.reservationCancelled = async function (
     action_required: false,
     action_url: `/reservations/${reservationId}`,
     action_text: "Voir",
-    related_entity: {
-      type: "reservation",
-      id: reservationId,
-      model: "Reservation",
-    },
+    related_entity: { type: "reservation", id: reservationId, model: "Reservation" },
   });
 };
 
-// ---------- Useful methods ----------
+// ---------- Methods ----------
 NotificationSchema.methods.markAsRead = async function () {
-  this.is_read = true;
+  this.read = true; // ✅ champ standard
   this.read_at = new Date();
   return this.save();
 };

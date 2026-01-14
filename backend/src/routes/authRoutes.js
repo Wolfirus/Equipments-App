@@ -1,51 +1,82 @@
 const express = require("express");
-const jwt = require("jsonwebtoken");
-const User = require("../models/User");
 const router = express.Router();
+const jwt = require("jsonwebtoken");
 
-const generateToken = (userId, role) => {
-  return jwt.sign({ id: userId, role }, process.env.JWT_SECRET, { expiresIn: "7d" });
-};
+const User = require("../models/User");
+const { ok, created, fail } = require("../utils/apiResponse");
 
-// REGISTER
+// helper JWT
+function signToken(user) {
+  return jwt.sign(
+    { id: user._id, role: user.role },
+    process.env.JWT_SECRET || "secret",
+    { expiresIn: "7d" }
+  );
+}
+
+// POST /api/auth/register
 router.post("/register", async (req, res) => {
   try {
-    const { name, email, password, role } = req.body;
-    if (!name || !email || !password) return res.status(400).json({ message: "Champs manquants" });
+    const { name, email, password, role = "user" } = req.body;
 
-    const existing = await User.findOne({ email });
-    if (existing) return res.status(400).json({ message: "Email déjà utilisé" });
+    if (!name || !email || !password) {
+      return fail(res, 400, "name, email et password sont requis");
+    }
+    if (String(password).length < 6) {
+      return fail(res, 400, "Mot de passe trop court (min 6)");
+    }
 
-    const allowedRoles = ["user", "supervisor"];
-    const finalRole = allowedRoles.includes(role?.toLowerCase()) ? role.toLowerCase() : "user";
+    const cleanEmail = String(email).trim().toLowerCase();
+    const exists = await User.findOne({ email: cleanEmail });
+    if (exists) return fail(res, 400, "Email déjà utilisé");
 
-    const user = await User.create({ name, email, password, role: finalRole });
-    const token = generateToken(user._id, user.role);
+    // sécurité: empêcher création admin via UI
+    const safeRole = ["user", "supervisor"].includes(role) ? role : "user";
 
-    res.status(201).json({ token, user: { id: user._id, name: user.name, email: user.email, role: user.role, avatar: user.avatar } });
-  } catch (err) {
-    console.error("Register error:", err);
-    res.status(500).json({ message: "Erreur serveur" });
+    const user = await User.create({
+      name: String(name).trim(),
+      email: cleanEmail,
+      password: String(password),
+      role: safeRole,
+    });
+
+    const token = signToken(user);
+
+    const safeUser = user.toObject();
+    delete safeUser.password;
+
+    return created(res, { token, user: safeUser }, "Compte créé");
+  } catch (e) {
+    return fail(res, 500, "Erreur création compte", { error: e.message });
   }
 });
 
-// LOGIN
+// POST /api/auth/login
 router.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body;
-    if (!email || !password) return res.status(400).json({ message: "Champs manquants" });
 
-    const user = await User.findOne({ email });
-    if (!user) return res.status(400).json({ message: "Identifiants invalides" });
+    if (!email || !password) return fail(res, 400, "email et password requis");
 
-    const isMatch = await user.matchPassword(password);
-    if (!isMatch) return res.status(400).json({ message: "Identifiants invalides" });
+    const user = await User.findOne({ email: String(email).trim().toLowerCase() });
+    if (!user) return fail(res, 401, "Identifiants invalides");
 
-    const token = generateToken(user._id, user.role);
-    res.json({ token, user: { id: user._id, name: user.name, email: user.email, role: user.role, avatar: user.avatar } });
-  } catch (err) {
-    console.error("Login error:", err);
-    res.status(500).json({ message: "Erreur serveur" });
+    const okPass = await user.matchPassword(String(password));
+    if (!okPass) return fail(res, 401, "Identifiants invalides");
+
+    // update last_activity
+    user.stats = user.stats || {};
+    user.stats.last_activity = new Date();
+    await user.save();
+
+    const token = signToken(user);
+
+    const safeUser = user.toObject();
+    delete safeUser.password;
+
+    return ok(res, { token, user: safeUser }, "Connexion réussie");
+  } catch (e) {
+    return fail(res, 500, "Erreur connexion", { error: e.message });
   }
 });
 
