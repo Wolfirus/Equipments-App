@@ -7,14 +7,16 @@ export default function RootLayout() {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
 
-  const goDashboard = () => navigate("/equipment"); // ✅ pas /app
+  // ✅ Always go to the role-based dashboard home
+  const goDashboard = () => navigate("/dashboard");
 
   return (
     <div className="min-h-screen bg-gray-50">
       <nav className="sticky top-0 z-50 bg-white/90 backdrop-blur border-b border-gray-200">
         <div className="mx-auto max-w-7xl px-4">
           <div className="h-16 flex items-center justify-between">
-            <Link to="/" className="flex items-center gap-3">
+            {/* ✅ If logged in, clicking logo should bring you to /dashboard */}
+            <Link to={user ? "/dashboard" : "/"} className="flex items-center gap-3">
               <div className="h-10 w-10 rounded-2xl bg-gradient-to-tr from-blue-600 to-sky-400 text-white flex items-center justify-center font-bold">
                 EQ
               </div>

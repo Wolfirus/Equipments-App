@@ -14,7 +14,7 @@ const SideItem = ({ to, label, icon }) => {
               : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
           }`
         }
-        end={to === "/"}
+        end={to === "/dashboard"}
       >
         <span className="text-lg">{icon}</span>
         {label}
@@ -37,7 +37,7 @@ export default function DashboardLayout() {
       {/* Sidebar */}
       <aside className="fixed top-0 left-0 h-full w-72 bg-white border-r border-gray-200">
         <div className="p-5 border-b border-gray-200">
-          <Link to="/" className="block">
+          <Link to="/dashboard" className="block">
             <div className="text-lg font-black text-slate-900">Équipements</div>
             <div className="text-xs text-slate-500">Plateforme de réservation</div>
           </Link>
@@ -45,48 +45,34 @@ export default function DashboardLayout() {
 
         <nav className="p-3">
           <ul>
-            {/* ✅ MENU UTILISATEUR: affiché seulement pour role=user */}
+            <SideItem to="/dashboard" label="Accueil" icon="🏠" />
+
             {!isManager && (
               <>
-                <SideItem to="/equipment" label="Équipements" icon="🧰" />
-                <SideItem to="/reservations" label="Réservations" icon="📅" />
+                <SideItem to="/equipment" label="Catalogue" icon="🧰" />
+                <SideItem to="/reservations" label="Mes réservations" icon="📅" />
               </>
             )}
 
-            {/* ✅ Toujours visible */}
             <SideItem to="/notifications" label="Notifications" icon="🔔" />
             <SideItem to="/profile" label="Profil" icon="👤" />
 
             <div className="mt-6 px-4 text-xs uppercase tracking-wider text-slate-400">
               Informations
             </div>
-            <SideItem to="/about" label="À propos" icon="ℹ️" />
-            <SideItem to="/contact" label="Contact" icon="✉️" />
+            <SideItem to="/dashboard/about" label="À propos" icon="ℹ️" />
+            <SideItem to="/dashboard/contact" label="Contact" icon="✉️" />
 
-            {/* ✅ ADMINISTRATION: supervisor + admin */}
             {isManager && (
               <>
                 <div className="mt-6 px-4 text-xs uppercase tracking-wider text-slate-400">
                   Administration
                 </div>
 
-                {/* ✅ Supervisor: on supprime "Dashboard"
-                    ✅ Admin: on garde la route /admin mais label devient "Gestion utilisateurs"
-                */}
-                {isAdmin && (
-                  <SideItem to="/admin" label="Gestion utilisateurs" icon="👥" />
-                )}
+                {isAdmin && <SideItem to="/admin" label="Gestion utilisateurs" icon="👥" />}
 
-                <SideItem
-                  to="/admin/equipments"
-                  label="Gestion équipements"
-                  icon="🛠️"
-                />
-                <SideItem
-                  to="/admin/reservations"
-                  label="Gestion réservations"
-                  icon="✅"
-                />
+                <SideItem to="/admin/equipments" label="Gestion équipements" icon="🛠️" />
+                <SideItem to="/admin/reservations" label="Gestion réservations" icon="✅" />
                 <SideItem to="/admin/messages" label="Messages" icon="💬" />
               </>
             )}
@@ -133,7 +119,6 @@ export default function DashboardLayout() {
           </div>
         </header>
 
-        {/* Content */}
         <main className="p-6">
           <Outlet />
         </main>

@@ -1,5 +1,5 @@
 import React from "react";
-import { Link } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
 const Card = ({ title, desc, to, cta, icon }) => (
@@ -19,13 +19,16 @@ const Card = ({ title, desc, to, cta, icon }) => (
 export default function Home() {
   const { user } = useAuth();
 
+  // ✅ If logged in, public home should not be used
+  if (user) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
   return (
     <div className="space-y-6">
       <div className="bg-white border border-gray-200 rounded-2xl p-8 shadow-sm">
         <div className="text-sm text-slate-500">Système</div>
-        <h1 className="text-3xl font-black text-slate-900 mt-1">
-          Réservation d’Équipements
-        </h1>
+        <h1 className="text-3xl font-black text-slate-900 mt-1">Réservation d’Équipements</h1>
         <p className="text-slate-600 mt-2 max-w-2xl">
           Interface moderne type dashboard. Recherchez des équipements, créez des réservations
           et suivez leur statut.
@@ -33,45 +36,46 @@ export default function Home() {
 
         <div className="mt-5 flex gap-3">
           <Link
-            to="/equipment"
+            to="/login"
             className="px-5 py-2.5 rounded-lg bg-slate-900 text-white font-semibold hover:bg-slate-800"
           >
-            Voir le catalogue
+            Se connecter
           </Link>
+
           <Link
-            to="/reservations"
+            to="/register"
             className="px-5 py-2.5 rounded-lg border border-gray-200 text-slate-700 font-semibold hover:bg-slate-50"
           >
-            Mes réservations
+            Créer un compte
           </Link>
         </div>
 
         <div className="mt-6 text-sm text-slate-500">
-          Statut: <span className="font-semibold">{user ? "Connecté" : "Non connecté"}</span>
+          Statut: <span className="font-semibold">Non connecté</span>
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
         <Card
           icon="🧰"
-          title="Équipements"
-          desc="Consultez les équipements disponibles et leurs détails."
-          to="/equipment"
-          cta="Ouvrir"
+          title="Catalogue"
+          desc="Connectez-vous pour consulter les équipements disponibles."
+          to="/login"
+          cta="Connexion"
         />
         <Card
           icon="📅"
           title="Réservations"
-          desc="Créer, suivre et gérer vos réservations."
-          to="/reservations"
-          cta="Gérer"
+          desc="Connectez-vous pour créer et suivre vos réservations."
+          to="/login"
+          cta="Connexion"
         />
         <Card
           icon="👤"
           title="Profil"
-          desc="Mettre à jour vos informations et préférences."
-          to="/profile"
-          cta="Modifier"
+          desc="Connectez-vous pour accéder à votre profil."
+          to="/login"
+          cta="Connexion"
         />
       </div>
     </div>

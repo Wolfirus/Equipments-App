@@ -29,7 +29,7 @@ export default function AdminDashboard() {
     fetchUsers();
   }, []);
 
-  if (!user || user.role !== "admin") {
+  if (!user || (user?.role || "").toLowerCase() !== "admin") {
     return (
       <div className="bg-white shadow-xl rounded-2xl p-6">
         <div className="font-semibold text-slate-900">Accès administrateur requis.</div>
@@ -52,7 +52,11 @@ export default function AdminDashboard() {
 
     try {
       setSavingId(id);
-      const updated = await usersAPI.update(id, { name: editForm.name, email: editForm.email });
+      const updated = await usersAPI.update(id, {
+        name: editForm.name,
+        email: editForm.email,
+      });
+
       setUsers((prev) => prev.map((u) => (u._id === id ? { ...u, ...updated } : u)));
       cancelEdit();
     } catch (err) {
@@ -66,7 +70,9 @@ export default function AdminDashboard() {
     try {
       setSavingId(id);
       const updated = await usersAPI.setRole(id, newRole);
-      setUsers((prev) => prev.map((u) => (u._id === id ? { ...u, role: updated?.role || newRole } : u)));
+      setUsers((prev) =>
+        prev.map((u) => (u._id === id ? { ...u, role: updated?.role || newRole } : u))
+      );
     } catch (err) {
       alert(err?.message || "Erreur lors du changement de rôle.");
     } finally {
@@ -91,12 +97,16 @@ export default function AdminDashboard() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-slate-900">Dashboard Administrateur</h1>
-        <p className="text-sm text-slate-600 mt-1">Bienvenue, {user.name}. Gérez les utilisateurs.</p>
+        <h1 className="text-2xl font-semibold text-slate-900">Gestion des utilisateurs</h1>
+        <p className="text-sm text-slate-600 mt-1">
+          Admin: modifier les informations, changer les rôles et supprimer des comptes.
+        </p>
       </div>
 
       {error && (
-        <div className="bg-red-50 text-red-700 border border-red-200 rounded-xl px-4 py-3 text-sm">{error}</div>
+        <div className="bg-red-50 text-red-700 border border-red-200 rounded-xl px-4 py-3 text-sm">
+          {error}
+        </div>
       )}
 
       <div className="bg-white shadow-xl rounded-2xl overflow-hidden">

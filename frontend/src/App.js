@@ -1,7 +1,6 @@
 import React from "react";
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
-
 import ProtectedRoute from "./components/ProtectedRoute";
 
 // Layouts
@@ -27,9 +26,8 @@ import AdminEquipments from "./pages/AdminEquipments";
 import AdminReservations from "./pages/AdminReservations";
 import AdminMessages from "./pages/AdminMessages";
 
-// Optional dashboards
-import SupervisorDashboard from "./pages/SupervisorDashboard";
-import UserDashboard from "./pages/UserDashboard";
+// Dashboard Home (role-based)
+import DashboardHome from "./pages/DashboardHome";
 
 export default function App() {
   const managerRoles = ["admin", "supervisor"];
@@ -41,10 +39,12 @@ export default function App() {
           {/* PUBLIC LAYOUT */}
           <Route element={<RootLayout />}>
             <Route path="/" element={<Home />} />
-            <Route path="/about" element={<About />} />
-            <Route path="/contact" element={<Contact />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+
+            {/* Public About/Contact (visitors) */}
+            <Route path="/about" element={<About />} />
+            <Route path="/contact" element={<Contact />} />
           </Route>
 
           {/* DASHBOARD (SIDEBAR) LAYOUT */}
@@ -55,23 +55,20 @@ export default function App() {
               </ProtectedRoute>
             }
           >
+            {/* ✅ MAIN HOME INSIDE SIDEBAR */}
+            <Route path="/dashboard" element={<DashboardHome />} />
+
+            {/* ✅ Dashboard versions so sidebar stays visible */}
+            <Route path="/dashboard/about" element={<About />} />
+            <Route path="/dashboard/contact" element={<Contact />} />
+
+            {/* User features */}
             <Route path="/equipment" element={<EquipmentCatalog />} />
             <Route path="/equipment/:id" element={<EquipmentCatalog />} />
-
             <Route path="/reservations" element={<ReservationManagement />} />
+
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/notifications" element={<NotificationsPage />} />
-
-            {/* optional dashboards */}
-            <Route path="/user" element={<UserDashboard />} />
-            <Route
-              path="/supervisor"
-              element={
-                <ProtectedRoute roles={["supervisor", "admin"]}>
-                  <SupervisorDashboard />
-                </ProtectedRoute>
-              }
-            />
 
             {/* Manager/Admin area */}
             <Route
@@ -106,6 +103,10 @@ export default function App() {
                 </ProtectedRoute>
               }
             />
+
+            {/* Old/legacy dashboard routes → redirect to /dashboard */}
+            <Route path="/user" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/supervisor" element={<Navigate to="/dashboard" replace />} />
           </Route>
 
           {/* fallback */}

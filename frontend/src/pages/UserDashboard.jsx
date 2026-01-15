@@ -1,24 +1,6 @@
 import React from "react";
-import { useAuth } from "../context/AuthContext";
+import { Navigate } from "react-router-dom";
 
-const UserDashboard = () => {
-  const { user } = useAuth();
-
-  return (
-    <div className="dashboard-root">
-      <div className="dashboard-card">
-        <h1>Tableau de bord Utilisateur</h1>
-        <p className="dashboard-subtitle">
-          Bienvenue, {user?.name}. Gérez vos réservations d'équipements.
-        </p>
-        <ul>
-          <li>Créer une réservation</li>
-          <li>Voir l’historique</li>
-          <li>Suivre le statut des demandes</li>
-        </ul>
-      </div>
-    </div>
-  );
-};
-
-export default UserDashboard;
+export default function UserDashboard() {
+  return <Navigate to="/dashboard" replace />;
+}

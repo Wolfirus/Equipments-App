@@ -26,7 +26,8 @@ export default function Login() {
       // data = { token, user }
       login(data.user, data.token);
 
-      navigate("/equipment");
+      // ✅ Send everyone to dashboard home
+      navigate("/dashboard", { replace: true });
     } catch (e2) {
       setErr(e2.message || "Erreur connexion");
     } finally {
