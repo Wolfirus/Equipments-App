@@ -1,244 +1,178 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import React, { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 
-const EquipmentCard = ({ equipment, onReserve, compact = false }) => {
+export default function EquipmentCard({
+  equipment,
+  availability = null, // { available_quantity, total_quantity, status } ou null
+  showReserve = false, // dans le catalogue: false (réserver seulement dans détails)
+  onReserve,
+}) {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [imageError, setImageError] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [loadingReserve, setLoadingReserve] = useState(false);
 
-  const handleReserve = () => {
-    if (onReserve) {
-      onReserve(equipment._id);
-    } else {
-      navigate(`/equipment/${equipment._id}`);
+  const statusLabel = (status) => {
+    const st = String(status || "").toLowerCase();
+    if (st === "available") return "Disponible";
+    if (st === "maintenance") return "Maintenance";
+    if (st === "retired") return "Retiré";
+    return st || "—";
+  };
+
+  const statusBar = (status) => {
+    const st = String(status || "").toLowerCase();
+    if (st === "available") return "bg-emerald-500";
+    if (st === "maintenance") return "bg-amber-500";
+    if (st === "retired") return "bg-slate-500";
+    return "bg-slate-400";
+  };
+
+  // ✅ Prix sans monnaie (juste nombre + unité)
+  const fmt = (v) => {
+    if (v === undefined || v === null || v === "") return null;
+    const n = Number(v);
+    if (Number.isNaN(n)) return String(v);
+    return n.toFixed(2);
+  };
+
+  const hourly = fmt(equipment?.rental_info?.hourly_rate ?? equipment?.hourly_rate);
+  const daily = fmt(equipment?.rental_info?.daily_rate ?? equipment?.daily_rate);
+
+  // ✅ Disponibilité: si availability fourni => on l’utilise (période)
+  const totalQty = useMemo(() => {
+    return Number(availability?.total_quantity ?? equipment?.quantity ?? 1);
+  }, [availability, equipment]);
+
+  const availableQty = useMemo(() => {
+    // si availability null => on montre la dispo globale
+    const v = availability?.available_quantity;
+    if (v === undefined || v === null) {
+      return Number(equipment?.available_quantity ?? equipment?.quantity ?? 0);
+    }
+    return Number(v);
+  }, [availability, equipment]);
+
+  const effectiveStatus = useMemo(() => {
+    // si availability fournit un status, sinon status equipment
+    return availability?.status || equipment?.status;
+  }, [availability, equipment]);
+
+  const canReserve = useMemo(() => {
+    const st = String(effectiveStatus || "").toLowerCase();
+    return st === "available" && availableQty > 0;
+  }, [effectiveStatus, availableQty]);
+
+  const reserve = async () => {
+    if (!equipment?._id) return;
+    try {
+      setLoadingReserve(true);
+      if (typeof onReserve === "function") {
+        await onReserve(equipment._id);
+      } else {
+        navigate(`/equipment/${equipment._id}`);
+      }
+    } finally {
+      setLoadingReserve(false);
     }
   };
-
-  const handleImageError = () => {
-    setImageError(true);
-  };
-
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'available':
-        return '#22c55e'; // Green
-      case 'maintenance':
-        return '#f59e0b'; // Orange
-      case 'retired':
-        return '#ef4444'; // Red
-      default:
-        return '#6b7280'; // Gray
-    }
-  };
-
-  const getStatusText = (status) => {
-    switch (status) {
-      case 'available':
-        return 'Disponible';
-      case 'maintenance':
-        return 'Maintenance';
-      case 'retired':
-        return 'Retiré';
-      default:
-        return status;
-    }
-  };
-
-  const getUtilizationRate = () => {
-    if (equipment.total_quantity === 0) return 0;
-    return Math.round(((equipment.total_quantity - equipment.available_quantity) / equipment.total_quantity) * 100);
-  };
-
-  const formatPrice = (price, type = 'hourly') => {
-    if (price === 0) return 'Gratuit';
-    return `${price.toFixed(2)}€/${type === 'hourly' ? 'h' : 'jour'}`;
-  };
-
-  const cardClass = compact
-    ? 'equipment-card compact'
-    : 'equipment-card';
-
-  const imagesToShow = equipment.images ? equipment.images.slice(0, 3) : [];
 
   return (
-    <div className={cardClass}>
-      {/* Image Section */}
-      <div className="equipment-card-image">
-        {imagesToShow.length > 0 ? (
-          <div className="equipment-card-images">
-            {imagesToShow.map((image, index) => (
-              <div key={index} className="equipment-card-image-item">
-                <img
-                  src={image}
-                  alt={`${equipment.name} - Image ${index + 1}`}
-                  className="equipment-card-img"
-                  onError={handleImageError}
-                  loading="lazy"
-                />
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="equipment-card-image-placeholder">
-            <span className="equipment-card-placeholder-icon">📦</span>
-          </div>
-        )}
+    <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
+      {/* barre de statut */}
+      <div className={`h-2 w-full ${statusBar(effectiveStatus)}`} />
 
-        {/* Status Badge */}
-        <div
-          className="equipment-card-status"
-          style={{ backgroundColor: getStatusColor(equipment.status) }}
-        >
-          {getStatusText(equipment.status)}
-        </div>
-      </div>
-
-      {/* Content Section */}
-      <div className="equipment-card-content">
-        <div className="equipment-card-header">
-          <h3 className="equipment-card-title">{equipment.name}</h3>
-          <div className="equipment-card-meta">
-            {equipment.specifications?.brand && (
-              <span className="equipment-card-brand">{equipment.specifications.brand}</span>
-            )}
-            <span className="equipment-card-category">{equipment.category}</span>
-          </div>
-        </div>
-
-        <p className="equipment-card-description">
-          {equipment.description?.substring(0, compact ? 80 : 120)}
-          {equipment.description?.length > (compact ? 80 : 120) && '...'}
-        </p>
-
-        {/* Specifications */}
-        <div className="equipment-card-specs">
-          {equipment.specifications?.model && (
-            <div className="equipment-card-spec">
-              <span className="spec-label">Modèle:</span>
-              <span className="spec-value">{equipment.specifications.model}</span>
-            </div>
-          )}
-
-          {equipment.specifications?.year_manufactured && (
-            <div className="equipment-card-spec">
-              <span className="spec-label">Année:</span>
-              <span className="spec-value">{equipment.specifications.year_manufactured}</span>
-            </div>
-          )}
-
-          {equipment.location && (
-            <div className="equipment-card-spec">
-              <span className="spec-label">Lieu:</span>
-              <span className="spec-value">{equipment.location}</span>
-            </div>
-          )}
-        </div>
-
-        {/* Availability */}
-        <div className="equipment-card-availability">
-          <div className="availability-info">
-            <span className="availability-label">Disponibilité:</span>
-            <span className="availability-count">
-              {equipment.available_quantity}/{equipment.total_quantity}
-            </span>
-          </div>
-          <div className="utilization-bar">
-            <div
-              className="utilization-fill"
-              style={{ width: `${getUtilizationRate()}%` }}
+      <div className="p-4">
+        {/* image */}
+        <div className="w-full h-44 rounded-xl bg-gray-50 overflow-hidden flex items-center justify-center">
+          {equipment?.image_url && !imageError ? (
+            <img
+              src={equipment.image_url}
+              alt={equipment?.name || "equipment"}
+              className="w-full h-full object-cover"
+              onError={() => setImageError(true)}
             />
+          ) : (
+            <div className="text-5xl">📦</div>
+          )}
+        </div>
+
+        {/* infos */}
+        <div className="mt-4">
+          <div className="text-base font-semibold text-slate-900">
+            {equipment?.name || "—"}
           </div>
-          <span className="utilization-text">
-            {getUtilizationRate()}% utilisé
-          </span>
-        </div>
+          <div className="text-xs text-slate-500 mt-1">
+            {equipment?.category?.name || equipment?.category || "—"}
+          </div>
 
-        {/* Pricing */}
-        <div className="equipment-card-pricing">
-          {equipment.rental_info?.hourly_rate > 0 && (
-            <div className="price-info">
-              <span className="price-label">Heure:</span>
-              <span className="price-value">
-                {formatPrice(equipment.rental_info.hourly_rate, 'hourly')}
-              </span>
+          <div className="mt-3 space-y-1 text-sm text-slate-700">
+            <div>
+              <span className="font-semibold">Statut :</span>{" "}
+              {statusLabel(effectiveStatus)}
             </div>
-          )}
 
-          {equipment.rental_info?.daily_rate > 0 && (
-            <div className="price-info">
-              <span className="price-label">Jour:</span>
-              <span className="price-value">
-                {formatPrice(equipment.rental_info.daily_rate, 'daily')}
-              </span>
-            </div>
-          )}
-        </div>
-
-        {/* Rating */}
-        {equipment.usage_stats?.average_rating && (
-          <div className="equipment-card-rating">
-            <div className="rating-stars">
-              {[1, 2, 3, 4, 5].map((star) => (
-                <span
-                  key={star}
-                  className={`rating-star ${star <= equipment.usage_stats.average_rating ? 'filled' : ''}`}
-                >
-                  ★
+            {/* ✅ Affichage disponibilité selon période si availability existe */}
+            <div>
+              <span className="font-semibold">Disponibilité :</span>{" "}
+              {availability ? (
+                <span>
+                  {availableQty}/{totalQty} (période)
                 </span>
-              ))}
+              ) : (
+                <span>
+                  {availableQty}/{totalQty}
+                </span>
+              )}
             </div>
-            <span className="rating-text">
-              ({equipment.usage_stats.average_rating.toFixed(1)}/5)
-            </span>
-            <span className="rating-count">
-              {equipment.usage_stats.total_rentals} réservations
-            </span>
+
+            {(hourly || daily) && (
+              <div className="pt-1">
+                {hourly && (
+                  <div>
+                    <span className="font-semibold">Heure :</span> {hourly} / h
+                  </div>
+                )}
+                {daily && (
+                  <div>
+                    <span className="font-semibold">Jour :</span> {daily} / jour
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* message si période sélectionnée et indisponible */}
+            {availability && availableQty <= 0 && (
+              <div className="text-xs text-slate-500 mt-2">
+                Indisponible pour cette période.
+              </div>
+            )}
           </div>
-        )}
-      </div>
 
-      {/* Footer */}
-      <div className="equipment-card-footer">
-        {/* Approval Badge */}
-        {equipment.rental_info?.requires_approval && (
-          <div className="approval-badge">
-            <span className="approval-icon">⚠️</span>
-            <span className="approval-text">Approbation requise</span>
-          </div>
-        )}
-
-        {/* Training Required */}
-        {equipment.rental_info?.requires_training && (
-          <div className="training-badge">
-            <span className="training-icon">🎓</span>
-            <span className="training-text">Formation requise</span>
-          </div>
-        )}
-
-        {/* Action Buttons */}
-        <div className="equipment-card-actions">
-          <button
-            className="btn-ghost btn-small"
-            onClick={() => navigate(`/equipment/${equipment._id}`)}
-          >
-            Détails
-          </button>
-
-          {equipment.available_quantity > 0 && user && (
+          {/* actions (✅ un seul "Voir détails") */}
+          <div className="mt-4 flex items-center gap-2">
             <button
-              className="btn-primary btn-small"
-              onClick={handleReserve}
-              disabled={isLoading}
+              className="flex-1 px-4 py-2 rounded-xl border border-gray-200 hover:bg-gray-50 text-sm font-semibold text-slate-800"
+              onClick={() => navigate(`/equipment/${equipment._id}`)}
             >
-              {isLoading ? '...' : 'Réserver'}
+              Voir détails
             </button>
-          )}
+
+            {/* optionnel: réserver (souvent uniquement dans page détails) */}
+            {showReserve && user && (
+              <button
+                className="px-4 py-2 rounded-xl bg-slate-900 text-white hover:bg-slate-800 text-sm font-semibold disabled:opacity-60"
+                onClick={reserve}
+                disabled={!canReserve || loadingReserve}
+                title={!canReserve ? "Indisponible" : "Réserver"}
+              >
+                {loadingReserve ? "..." : "Réserver"}
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>
   );
-};
-
-export default EquipmentCard;
+}

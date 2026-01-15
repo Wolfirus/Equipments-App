@@ -20,7 +20,6 @@ export default function AdminReservations() {
     setErr("");
     try {
       // ✅ manager => /reservations/manage
-      // request() retourne directement data, typiquement: { reservations, pagination, ... }
       const data = await reservationAPI.manage({ page: 1, limit: 200 });
 
       const list = Array.isArray(data)
@@ -81,7 +80,6 @@ export default function AdminReservations() {
       }
 
       if (action === "cancel") {
-        // ✅ backend: DELETE /api/reservations/:id
         await reservationAPI.cancel(id);
       }
 
@@ -204,6 +202,9 @@ export default function AdminReservations() {
 
                   const busy = busyId === r._id;
 
+                  const st = String(r.status || "").toLowerCase();
+                  const canManage = st === "pending";
+
                   return (
                     <tr key={r._id} className="border-t">
                       <td className="px-6 py-4 font-medium text-slate-900">
@@ -219,33 +220,41 @@ export default function AdminReservations() {
                           ? new Date(r.end_date).toLocaleDateString("fr-FR")
                           : "—"}
                       </td>
-                      <td className="px-6 py-4 text-slate-600">
-                        {r.status || "—"}
-                      </td>
+                      <td className="px-6 py-4 text-slate-600">{st || "—"}</td>
+
+                      {/* ✅ Boutons uniquement si pending */}
                       <td className="px-6 py-4 text-right">
-                        <div className="inline-flex gap-2">
-                          <button
-                            className="px-3 py-2 rounded-lg bg-emerald-600 text-white hover:opacity-90 disabled:opacity-60"
-                            disabled={busy}
-                            onClick={() => act(r._id, "approve")}
-                          >
-                            Valider
-                          </button>
-                          <button
-                            className="px-3 py-2 rounded-lg bg-amber-600 text-white hover:opacity-90 disabled:opacity-60"
-                            disabled={busy}
-                            onClick={() => act(r._id, "reject")}
-                          >
-                            Refuser
-                          </button>
-                          <button
-                            className="px-3 py-2 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-60"
-                            disabled={busy}
-                            onClick={() => act(r._id, "cancel")}
-                          >
-                            Annuler
-                          </button>
-                        </div>
+                        {canManage ? (
+                          <div className="inline-flex gap-2">
+                            <button
+                              className="px-3 py-2 rounded-lg bg-emerald-600 text-white hover:opacity-90 disabled:opacity-60"
+                              disabled={busy}
+                              onClick={() => act(r._id, "approve")}
+                            >
+                              Valider
+                            </button>
+
+                            <button
+                              className="px-3 py-2 rounded-lg bg-amber-600 text-white hover:opacity-90 disabled:opacity-60"
+                              disabled={busy}
+                              onClick={() => act(r._id, "reject")}
+                            >
+                              Refuser
+                            </button>
+
+                            <button
+                              className="px-3 py-2 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-60"
+                              disabled={busy}
+                              onClick={() => act(r._id, "cancel")}
+                            >
+                              Annuler
+                            </button>
+                          </div>
+                        ) : (
+                          <span className="text-xs text-slate-400 italic">
+                            Traitée
+                          </span>
+                        )}
                       </td>
                     </tr>
                   );

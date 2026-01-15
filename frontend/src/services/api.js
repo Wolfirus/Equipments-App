@@ -105,25 +105,39 @@ export const profileAPI = {
 };
 
 export const equipmentAPI = {
-  // ✅ nouveaux noms (recommandés)
+  // ✅ NOMS PRINCIPAUX (nouveaux)
   list: (params = {}) => request(`/equipment${toQuery(params)}`),
   get: (id) => request(`/equipment/${id}`),
-  availability: (id, params = {}) =>
-    request(`/equipment/${id}/availability${toQuery(params)}`),
 
   create: (payload) =>
-    request(`/equipment`, { method: "POST", body: JSON.stringify(payload) }),
-  update: (id, payload) =>
-    request(`/equipment/${id}`, { method: "PUT", body: JSON.stringify(payload) }),
-  remove: (id) => request(`/equipment/${id}`, { method: "DELETE" }),
+    request(`/equipment`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
 
-  // categories
+  update: (id, payload) =>
+    request(`/equipment/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    }),
+
+  remove: (id) =>
+    request(`/equipment/${id}`, {
+      method: "DELETE",
+    }),
+
   categories: () => request(`/categories`),
 
-  // ✅ ALIAS (compatibilité avec tes anciennes pages)
+  // ==========================
+  // ✅ ALIAS (ancien code)
+  // ==========================
+
+  // utilisé dans EquipmentDetails, Reservation, etc.
+  getEquipmentById: (id) => request(`/equipment/${id}`),
+
+  // parfois utilisé avec id ou params
   getEquipment: (idOrParams) => {
-    // ancien code parfois faisait getEquipment({page,limit})
-    if (typeof idOrParams === "object" && idOrParams !== null) {
+    if (typeof idOrParams === "object") {
       return request(`/equipment${toQuery(idOrParams)}`);
     }
     return request(`/equipment/${idOrParams}`);
@@ -133,12 +147,21 @@ export const equipmentAPI = {
   getAllEquipments: (params = {}) => request(`/equipment${toQuery(params)}`),
 
   addEquipment: (payload) =>
-    request(`/equipment`, { method: "POST", body: JSON.stringify(payload) }),
+    request(`/equipment`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
 
   updateEquipment: (id, payload) =>
-    request(`/equipment/${id}`, { method: "PUT", body: JSON.stringify(payload) }),
+    request(`/equipment/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    }),
 
-  deleteEquipment: (id) => request(`/equipment/${id}`, { method: "DELETE" }),
+  deleteEquipment: (id) =>
+    request(`/equipment/${id}`, {
+      method: "DELETE",
+    }),
 
   getCategories: () => request(`/categories`),
 };
