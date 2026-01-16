@@ -1,19 +1,24 @@
 const mongoose = require("mongoose");
 
+/**
+ * EquipmentSchema
+ * Un équipement réservable.
+ * Champs utilisés dans le projet :
+ * - name, description, category
+ * - total_quantity, available_quantity
+ * - status
+ * - images, location
+ * - rental_info, visibility
+ */
 const EquipmentSchema = new mongoose.Schema(
   {
-    name: {
-      type: String,
-      required: true,
-      trim: true,
-      maxlength: 100,
-    },
-    description: {
-      type: String,
-      required: true,
-      trim: true,
-      maxlength: 1000,
-    },
+    // Nom de l'équipement
+    name: { type: String, required: true, trim: true, maxlength: 100 },
+
+    // Description
+    description: { type: String, required: true, trim: true, maxlength: 1000 },
+
+    // Catégorie (simple string)
     category: {
       type: String,
       required: true,
@@ -32,101 +37,52 @@ const EquipmentSchema = new mongoose.Schema(
         "Safety",
         "Other",
       ],
-      // ✅ index: true supprimé (évite doublon avec l’index composite)
     },
-    total_quantity: {
-      type: Number,
-      required: true,
-      min: 1,
-      default: 1,
-    },
+
+    // Quantité totale (stock réel)
+    total_quantity: { type: Number, required: true, min: 1, default: 1 },
+
+    /**
+     * Quantité disponible "maintenant"
+     * ⚠️ La vraie disponibilité sur une période est calculée via /availability
+     */
     available_quantity: {
       type: Number,
-      required: true,
       min: 0,
+      default: undefined, // ✅ évite un default "1" trompeur
       validate: {
         validator: function (v) {
+          if (v === undefined || v === null) return true;
           return v <= this.total_quantity;
         },
-        message: "Available quantity cannot exceed total quantity",
+        message: "available_quantity ne peut pas dépasser total_quantity",
       },
     },
+
+    // Etat global
     status: {
       type: String,
       enum: ["available", "maintenance", "retired"],
       default: "available",
+      index: true,
     },
-    location: {
-      type: String,
-      trim: true,
-      maxlength: 200,
-      default: "",
-    },
-    specifications: {
-      brand: { type: String, trim: true, default: "" },
-      model: { type: String, trim: true, default: "" },
-      serial_number: { type: String, trim: true, default: "" },
-      year_manufactured: {
-        type: Number,
-        min: 1900,
-        max: new Date().getFullYear() + 1,
-      },
-      weight: { type: Number, min: 0 },
-      dimensions: {
-        length: { type: Number, min: 0 },
-        width: { type: Number, min: 0 },
-        height: { type: Number, min: 0 },
-        unit: { type: String, enum: ["cm", "inches"], default: "cm" },
-      },
-      color: { type: String, trim: true, default: "" },
-      material: { type: String, trim: true, default: "" },
-      power_requirements: {
-        voltage: { type: Number, min: 0 },
-        frequency: { type: Number, min: 0 },
-        power_consumption: { type: Number, min: 0 },
-      },
-      condition: {
-        type: String,
-        enum: ["excellent", "good", "fair", "poor"],
-        default: "good",
-      },
-      accessories: [{ type: String, trim: true }],
-      notes: { type: String, trim: true, maxlength: 500, default: "" },
-    },
-    images: [
-      {
-        type: String,
-        validate: {
-          validator: function (v) {
-            return /^https?:\/\/.+\.(jpg|jpeg|png|gif|webp)$/i.test(v);
-          },
-          message: "Each image must be a valid image URL",
-        },
-      },
-    ],
+
+    // Lieu (optionnel)
+    location: { type: String, trim: true, maxlength: 200, default: "" },
+
+    // Liste d'URLs (simple)
+    images: { type: [String], default: [] },
+
+    // Politique de réservation
     rental_info: {
-      deposit_required: { type: Number, min: 0, default: 0 },
-      hourly_rate: { type: Number, min: 0, default: 0 },
-      daily_rate: { type: Number, min: 0, default: 0 },
-      weekly_rate: { type: Number, min: 0, default: 0 },
-      monthly_rate: { type: Number, min: 0, default: 0 },
+      requires_approval: { type: Boolean, default: true },
       max_rental_duration_days: { type: Number, min: 1, default: 30 },
-      min_rental_duration_hours: { type: Number, min: 1, default: 1 },
-      requires_approval: { type: Boolean, default: false },
-      requires_training: { type: Boolean, default: false },
     },
-    usage_stats: {
-      total_rentals: { type: Number, default: 0 },
-      active_rentals: { type: Number, default: 0 },
-      total_rental_days: { type: Number, default: 0 },
-      last_rented: { type: Date },
-      average_rating: { type: Number, min: 1, max: 5, default: 5 },
-      maintenance_count: { type: Number, default: 0 },
-      last_maintenance: { type: Date },
-    },
+
+    // Visibilité / restrictions
     visibility: {
       is_public: { type: Boolean, default: true },
-      restricted_to_departments: [{ type: String }],
+      restricted_to_departments: { type: [String], default: [] },
       minimum_user_role: {
         type: String,
         enum: ["user", "supervisor", "admin"],
@@ -134,42 +90,41 @@ const EquipmentSchema = new mongoose.Schema(
       },
     },
   },
-  {
-    timestamps: true,
-    toJSON: { virtuals: true },
-    toObject: { virtuals: true },
-  }
+  { timestamps: true, toJSON: { virtuals: true }, toObject: { virtuals: true } }
 );
 
-/* ================= VIRTUALS ================= */
-
-// Utilization rate
-EquipmentSchema.virtual("utilization_rate").get(function () {
-  return this.total_quantity > 0
-    ? ((this.total_quantity - this.available_quantity) / this.total_quantity) * 100
-    : 0;
-});
-
-// Availability status
+/**
+ * Virtual : l'équipement est "réservable" si
+ * - status=available
+ * - stock disponible > 0
+ */
 EquipmentSchema.virtual("is_available").get(function () {
-  return this.status === "available" && this.available_quantity > 0;
+  return this.status === "available" && (this.available_quantity ?? 0) > 0;
 });
 
-/* ================= INDEXES ================= */
-
-// Search performance
+// Indexes utiles (recherche + filtres)
 EquipmentSchema.index({ name: "text", description: "text" });
 EquipmentSchema.index({ category: 1, status: 1 });
-EquipmentSchema.index({ "usage_stats.total_rentals": -1 });
 
-/* ================= MIDDLEWARE ================= */
+/**
+ * Si available_quantity n'est pas défini au create,
+ * on le met = total_quantity
+ */
+EquipmentSchema.pre("validate", function (next) {
+  if (this.available_quantity === undefined || this.available_quantity === null) {
+    this.available_quantity = this.total_quantity;
+  }
+  next();
+});
 
-// Update availability based on status
+/**
+ * Si l'équipement est retiré, il ne doit plus être disponible.
+ * ⚠️ On ne reset PAS available_quantity quand status redevient available
+ * car la disponibilité par période est gérée par les réservations.
+ */
 EquipmentSchema.pre("save", function (next) {
   if (this.isModified("status") && this.status === "retired") {
     this.available_quantity = 0;
-  } else if (this.isModified("status") && this.status === "available") {
-    this.available_quantity = this.total_quantity;
   }
   next();
 });
